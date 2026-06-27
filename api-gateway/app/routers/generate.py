@@ -1,0 +1,210 @@
+"""Generation endpoints (architecture §4.2).
+
+Flow for POST /api/generate:
+  1. Check the user has remaining generations (free or pack).
+  2. Create a generation row (status=pending) and start the async pipeline.
+  3. Return generation_id immediately; the client polls GET /:id until completed.
+
+The mobile client uploads the selfie directly to private Storage (signed URL) and
+passes the object path here — the photo never transits the API body (architecture
+§10.3, less bandwidth + smaller attack surface).
+"""
+
+from __future__ import annotations
+
+import logging
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+
+from app.deps import CurrentUser, get_current_user
+from app.ml.pipeline import run_pipeline
+from app.ml.providers.base import ProviderConfig  # noqa: F401 (documents the contract)
+from app.schemas import GenerateRequest, GenerationListOut, GenerationOut, RetryRequest
+from app.services import quota
+from app.services.supabase_client import SupabaseClient, SupabaseError, get_supabase
+
+router = APIRouter(prefix="/api/generate", tags=["generation"])
+log = logging.getLogger("smile.generate")
+
+
+async def _signed(sb: SupabaseClient, path: str | None) -> str | None:
+    if not path:
+        return None
+    try:
+        return await sb.create_signed_url(path)
+    except SupabaseError:
+        return None
+
+
+def _to_out(
+    row: dict, original_url: str | None = None, result_url: str | None = None
+) -> GenerationOut:
+    return GenerationOut(
+        id=row["id"],
+        status=row["status"],
+        style_id=row.get("style_id"),
+        original_photo_url=original_url,
+        result_photo_url=result_url,
+        has_watermark=row.get("has_watermark", False),
+        quality_score=row.get("quality_score"),
+        inference_duration_ms=row.get("inference_duration_ms"),
+        error_message=row.get("error_message"),
+        created_at=row.get("created_at"),
+    )
+
+
+async def _process(
+    generation_id: str,
+    user_id: str,
+    photo_path: str,
+    style: dict,
+    watermark: bool,
+    decision: quota.QuotaDecision,
+) -> None:
+    """Background job: run the pipeline, persist results, consume quota."""
+    sb = get_supabase()
+    try:
+        await sb.update(
+            "generations", filters={"id": f"eq.{generation_id}"}, patch={"status": "processing"}
+        )
+        photo_bytes = await sb.download(photo_path)
+        out = await run_pipeline(
+            photo_bytes=photo_bytes,
+            style_template=style["prompt_template"],
+            style_name=style["name"],
+            apply_watermark=watermark,
+        )
+        result_path = f"{user_id}/{generation_id}_result.png"
+        mask_path = f"{user_id}/{generation_id}_mask.png"
+        await sb.upload(result_path, out.result_image)
+        await sb.upload(mask_path, out.mask_image)
+        await sb.update(
+            "generations",
+            filters={"id": f"eq.{generation_id}"},
+            patch={
+                "status": "completed",
+                "result_photo_url": result_path,
+                "mask_url": mask_path,
+                "prompt": out.prompt,
+                "inference_provider": out.provider,
+                "inference_cost_usd": out.cost_usd,
+                "inference_duration_ms": out.duration_ms,
+                "quality_score": out.quality_score,
+            },
+        )
+        await quota.consume(sb, user_id, decision)
+    except Exception as exc:  # noqa: BLE001 - record failure, do not crash worker
+        log.exception("generation %s failed", generation_id)
+        await sb.update(
+            "generations",
+            filters={"id": f"eq.{generation_id}"},
+            patch={"status": "failed", "error_message": str(exc)[:500]},
+        )
+
+
+@router.post("", response_model=GenerationOut, status_code=202)
+async def start_generation(
+    body: GenerateRequest,
+    background: BackgroundTasks,
+    user: CurrentUser = Depends(get_current_user),
+) -> GenerationOut:
+    sb = get_supabase()
+    decision = await quota.evaluate(sb, user.id)
+    if not decision.allowed:
+        raise HTTPException(status_code=402, detail=decision.reason or "limit_reached")
+
+    styles = await sb.select("styles", filters={"id": f"eq.{body.style_id}"}, limit=1)
+    if not styles:
+        raise HTTPException(status_code=404, detail="style_not_found")
+    style = styles[0]
+
+    row = await sb.insert(
+        "generations",
+        {
+            "user_id": user.id,
+            "style_id": str(body.style_id),
+            "original_photo_url": body.original_photo_path,
+            "status": "pending",
+            "has_watermark": decision.watermark,
+        },
+    )
+    background.add_task(
+        _process,
+        row["id"],
+        user.id,
+        body.original_photo_path,
+        style,
+        decision.watermark,
+        decision,
+    )
+    return _to_out(row)
+
+
+@router.get("/history", response_model=GenerationListOut)
+async def history(
+    limit: int = 20, user: CurrentUser = Depends(get_current_user)
+) -> GenerationListOut:
+    sb = get_supabase()
+    rows = await sb.select(
+        "generations",
+        filters={"user_id": f"eq.{user.id}", "order": "created_at.desc"},
+        limit=limit,
+    )
+    items = [
+        _to_out(
+            r,
+            await _signed(sb, r.get("original_photo_url")),
+            await _signed(sb, r.get("result_photo_url")),
+        )
+        for r in rows
+    ]
+    return GenerationListOut(items=items)
+
+
+@router.get("/{generation_id}", response_model=GenerationOut)
+async def get_generation(
+    generation_id: str, user: CurrentUser = Depends(get_current_user)
+) -> GenerationOut:
+    sb = get_supabase()
+    rows = await sb.select("generations", filters={"id": f"eq.{generation_id}"}, limit=1)
+    if not rows or rows[0]["user_id"] != user.id:
+        raise HTTPException(status_code=404, detail="not_found")
+    row = rows[0]
+    return _to_out(
+        row,
+        await _signed(sb, row.get("original_photo_url")),
+        await _signed(sb, row.get("result_photo_url")),
+    )
+
+
+@router.post("/{generation_id}/retry", response_model=GenerationOut, status_code=202)
+async def retry_generation(
+    generation_id: str,
+    body: RetryRequest,
+    background: BackgroundTasks,
+    user: CurrentUser = Depends(get_current_user),
+) -> GenerationOut:
+    sb = get_supabase()
+    rows = await sb.select("generations", filters={"id": f"eq.{generation_id}"}, limit=1)
+    if not rows or rows[0]["user_id"] != user.id:
+        raise HTTPException(status_code=404, detail="not_found")
+    prev = rows[0]
+    style_id = str(body.style_id) if body.style_id else prev["style_id"]
+    req = GenerateRequest(style_id=style_id, original_photo_path=prev["original_photo_url"])
+    return await start_generation(req, background, user)
+
+
+@router.delete("/{generation_id}", status_code=204)
+async def delete_generation(
+    generation_id: str, user: CurrentUser = Depends(get_current_user)
+) -> None:
+    sb = get_supabase()
+    rows = await sb.select("generations", filters={"id": f"eq.{generation_id}"}, limit=1)
+    if not rows or rows[0]["user_id"] != user.id:
+        raise HTTPException(status_code=404, detail="not_found")
+    await sb.update(
+        "generations",
+        filters={"id": f"eq.{generation_id}"},
+        patch={"status": "failed", "error_message": "deleted_by_user"},
+    )
+    # TODO(phase-1): hard-delete the storage objects + row once retention job lands.

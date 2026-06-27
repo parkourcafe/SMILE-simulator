@@ -1,0 +1,3 @@
+"""AI Smile Simulator — API gateway package."""
+
+__version__ = "0.1.0"

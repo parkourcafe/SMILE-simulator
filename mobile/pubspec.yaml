@@ -1,0 +1,34 @@
+name: smile_simulator
+description: AI Smile Simulator — see your future smile.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # State management (locked: Riverpod — CLAUDE.md Tech Stack)
+  flutter_riverpod: ^2.5.1
+  # Navigation
+  go_router: ^14.0.0
+  # Networking
+  dio: ^5.4.0
+  # Auth / backend
+  supabase_flutter: ^2.5.0
+  # Camera / gallery
+  image_picker: ^1.0.7
+  # Misc UI
+  cached_network_image: ^3.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  # assets:
+  #   - assets/styles/
