@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import io
+import os
 
 import pytest
 from PIL import Image
+
+# Tests use synthetic (non-face) images to exercise mask geometry and the pipeline.
+# Force the approximate mouth path by pointing the model env at a missing file, so
+# results are deterministic whether or not MediaPipe + the model bundle are installed
+# locally. (CI doesn't install the `ml` extra, so it already takes this path.)
+os.environ["MEDIAPIPE_FACE_MODEL"] = "/nonexistent/face_landmarker.task"
 
 
 @pytest.fixture

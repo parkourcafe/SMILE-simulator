@@ -1,3 +1,6 @@
+# ---- ML model cache (downloaded bundles, not source) ----
+api-gateway/.cache/
+
 # ---- Python / FastAPI (api-gateway) ----
 __pycache__/
 *.py[cod]
