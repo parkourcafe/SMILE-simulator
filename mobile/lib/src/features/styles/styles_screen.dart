@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../providers/generation_flow.dart';
 import '../../providers/providers.dart';
 
 /// Style selector grid. Premium styles are locked until the user has a pack.
@@ -27,7 +28,10 @@ class StylesScreen extends ConsumerWidget {
             final s = items[i];
             return InkWell(
               // TODO(phase-3): if s.isPremium and no pack -> route to /paywall.
-              onTap: () => context.push('/generating'),
+              onTap: () {
+                ref.read(generationFlowProvider.notifier).setStyle(s);
+                context.push('/generating');
+              },
               child: Card(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,

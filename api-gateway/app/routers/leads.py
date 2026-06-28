@@ -1,8 +1,8 @@
 """B2B lead submission + clinic-side endpoints (architecture §4.5, §8).
 
 A lead is the core B2B product: it carries the patient's selfie + AI result + contact,
-so the clinic sees what the patient wants before calling. MVP notifies clinics by
-email; WhatsApp Business API is Phase 2 (CLAUDE.md → Development Phases).
+so the clinic sees what the patient wants before calling. Clinics are notified via
+WhatsApp (preferred) or email — see app/services/notifications.py.
 """
 
 from __future__ import annotations
@@ -13,23 +13,11 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 
 from app.deps import CurrentUser, get_current_user
 from app.schemas import LeadOut, LeadRequest
+from app.services.notifications import notify_clinic
 from app.services.supabase_client import get_supabase
 
 router = APIRouter(tags=["leads"])
 log = logging.getLogger("smile.leads")
-
-
-async def _notify_clinic(clinic: dict, lead: dict, result_url: str | None) -> None:
-    """Send the warm lead to the clinic. MVP: email; Phase 2: WhatsApp template (§8.2)."""
-    # TODO(phase-5): integrate email (and WhatsApp Business API) provider.
-    log.info(
-        "lead %s -> clinic %s (%s): %s / %s",
-        lead["id"],
-        clinic["id"],
-        clinic.get("email"),
-        lead["user_name"],
-        lead["user_phone"],
-    )
 
 
 @router.post("/api/leads", response_model=LeadOut, status_code=201)
@@ -65,17 +53,20 @@ async def submit_lead(body: LeadRequest, user: CurrentUser = Depends(get_current
             result_url = await sb.create_signed_url(gens[0]["result_photo_url"], expires_in=86400)
         except Exception:  # noqa: BLE001
             result_url = None
-    await _notify_clinic(clinic, lead, result_url)
-    await sb.update(
-        "leads",
-        filters={"id": f"eq.{lead['id']}"},
-        patch={"status": "notified", "clinic_notified_at": "now()"},
-    )
+
+    notice = await notify_clinic(clinic, lead, result_url)
+    # Only advance to "notified" if a channel actually delivered; otherwise leave "new"
+    # so it surfaces for manual follow-up.
+    final_status = "notified" if notice.ok else "new"
+    patch: dict = {"status": final_status}
+    if notice.ok:
+        patch["clinic_notified_at"] = "now()"
+    await sb.update("leads", filters={"id": f"eq.{lead['id']}"}, patch=patch)
 
     return LeadOut(
         id=lead["id"],
         clinic_id=lead["clinic_id"],
-        status="notified",
+        status=final_status,
         created_at=lead.get("created_at"),
     )
 

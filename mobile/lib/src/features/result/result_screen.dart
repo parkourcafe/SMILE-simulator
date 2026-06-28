@@ -1,8 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../api/models.dart';
+import '../../providers/generation_flow.dart';
 import '../../providers/providers.dart';
+import '../../widgets/before_after_slider.dart';
 
 /// Result screen: before/after slider + actions.
 ///
@@ -19,25 +24,34 @@ class ResultScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final api = ref.watch(apiClientProvider);
+    final flow = ref.watch(generationFlowProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Your new smile')),
-      body: FutureBuilder(
-        future: api.getGeneration(generationId),
+      body: FutureBuilder<Generation>(
+        // Prefer the freshly-finished generation from the flow; otherwise fetch it.
+        future: (flow.generation?.id == generationId)
+            ? Future.value(flow.generation!)
+            : api.getGeneration(generationId),
         builder: (context, snap) {
           if (!snap.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
           final gen = snap.data!;
+          final localBefore = flow.photo;
+
+          final Widget before = localBefore != null
+              ? Image.file(File(localBefore.path), fit: BoxFit.cover)
+              : (gen.originalPhotoUrl != null
+                  ? Image.network(gen.originalPhotoUrl!, fit: BoxFit.cover)
+                  : const ColoredBox(color: Colors.black12));
+          final Widget after = gen.resultPhotoUrl != null
+              ? Image.network(gen.resultPhotoUrl!, fit: BoxFit.cover)
+              : const ColoredBox(color: Colors.black12);
+
           return Column(
             children: [
-              // TODO(phase-1): draggable before/after divider over the two images.
-              Expanded(
-                child: Container(
-                  color: Colors.black12,
-                  alignment: Alignment.center,
-                  child: const Text('Before / After slider'),
-                ),
-              ),
+              Expanded(child: BeforeAfterSlider(before: before, after: after)),
               if (gen.hasWatermark)
                 TextButton(
                   onPressed: () => context.push('/paywall'),

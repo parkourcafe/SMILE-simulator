@@ -38,6 +38,18 @@ class Settings(BaseSettings):
     # Admin / clinic auth
     admin_api_key: str = "change-me"
 
+    # Clinic notifications (Phase 5). Email is the MVP channel; WhatsApp is preferred
+    # when configured. All optional — unset means that channel is skipped.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "AI Smile Simulator <noreply@smilesim.app>"
+    smtp_use_tls: bool = True
+    whatsapp_api_base: str = "https://graph.facebook.com/v21.0"
+    whatsapp_token: str = ""
+    whatsapp_phone_id: str = ""
+
     # Misc
     photo_retention_days: int = 30
     result_image_size: int = 1024
