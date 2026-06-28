@@ -92,10 +92,12 @@ class MouthLandmarks:
     approximate: bool = False
 
 
-def _try_mediapipe(img: Image.Image) -> MouthLandmarks | None:
+def _detect_faces(img: Image.Image) -> list | None:
+    """Run FaceLandmarker; return a list of faces (each a list of normalized
+    landmarks with .x/.y), or None when MediaPipe/model is unavailable."""
     model_path = _model_path()
     if model_path is None:
-        return None  # no model bundle -> fall back to approximate mask
+        return None
     try:
         import mediapipe as mp  # type: ignore
         import numpy as np
@@ -104,9 +106,7 @@ def _try_mediapipe(img: Image.Image) -> MouthLandmarks | None:
     except ImportError:
         return None
 
-    w, h = img.size
     rgb = np.ascontiguousarray(np.asarray(img.convert("RGB"), dtype=np.uint8))
-
     options = vision.FaceLandmarkerOptions(
         base_options=mp_python.BaseOptions(model_asset_path=model_path),
         num_faces=2,
@@ -114,14 +114,20 @@ def _try_mediapipe(img: Image.Image) -> MouthLandmarks | None:
     with vision.FaceLandmarker.create_from_options(options) as landmarker:
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
         result = landmarker.detect(mp_image)
+    return result.face_landmarks or []
 
-    faces = result.face_landmarks or []
+
+def _try_mediapipe(img: Image.Image) -> MouthLandmarks | None:
+    """Detect the mouth at the image's native resolution (no crop). Kept for callers
+    that already supply a face-centered image."""
+    faces = _detect_faces(img)
+    if faces is None:
+        return None
     if len(faces) == 0:
         raise FaceDetectionError("no_face")
     if len(faces) > 1:
-        # Architecture §13 open question — for MVP we reject multi-face photos.
         raise FaceDetectionError("multiple_faces")
-
+    w, h = img.size
     lm = faces[0]
     outer = [(int(lm[i].x * w), int(lm[i].y * h)) for i in OUTER_LIP]
     return MouthLandmarks(outer=outer, width=w, height=h, approximate=False)
@@ -148,3 +154,46 @@ def detect_mouth(img: Image.Image) -> MouthLandmarks:
     if landmarks is not None:
         return landmarks
     return _approximate_mouth(img)
+
+
+# Square crop padding around the detected face bbox (1.0 = tight, 1.8 = generous).
+FACE_CROP_MARGIN = 1.8
+
+
+def detect_and_crop(img: Image.Image, *, size: int = 1024) -> tuple[Image.Image, MouthLandmarks]:
+    """Detect the face, crop a square around it, resize to ``size``, and return the
+    cropped image plus mouth landmarks in cropped coordinates.
+
+    This replaces a naive center-crop: phone selfies often have the face off-centre,
+    so a center-crop can cut the face out. Falls back to center-crop + approximate
+    mouth when MediaPipe/model is unavailable.
+    """
+    from app.ml import photo  # local import avoids a module cycle at import time
+
+    faces = _detect_faces(img)
+    if faces is None:
+        crop = photo.normalize(img, size=size)
+        return crop, _approximate_mouth(crop)
+    if len(faces) == 0:
+        raise FaceDetectionError("no_face")
+    if len(faces) > 1:
+        raise FaceDetectionError("multiple_faces")
+
+    pts = faces[0]
+    w, h = img.size
+    xs = [p.x * w for p in pts]
+    ys = [p.y * h for p in pts]
+    cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    side = max(max(xs) - min(xs), max(ys) - min(ys)) * FACE_CROP_MARGIN
+    side = min(side, float(min(w, h)))  # never exceed the image
+    left = max(0.0, min(cx - side / 2, w - side))
+    top = max(0.0, min(cy - side / 2, h - side))
+
+    crop = img.crop((int(left), int(top), int(left + side), int(top + side)))
+    crop = crop.resize((size, size), Image.LANCZOS)
+
+    scale = size / side
+    outer = [
+        (int((pts[i].x * w - left) * scale), int((pts[i].y * h - top) * scale)) for i in OUTER_LIP
+    ]
+    return crop, MouthLandmarks(outer=outer, width=size, height=size, approximate=False)

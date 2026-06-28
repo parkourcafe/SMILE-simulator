@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import io
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 MIN_DIMENSION = 512
 MAX_DIMENSION = 4096
@@ -27,6 +27,9 @@ def load_and_validate(data: bytes) -> Image.Image:
         raise PhotoValidationError("unreadable_image") from exc
     if img.format and img.format.upper() not in ACCEPTED_FORMATS:
         raise PhotoValidationError("unsupported_format")
+    # Honour EXIF orientation — phone photos are often stored rotated with an
+    # orientation tag; without this the face is sideways and detection fails.
+    img = ImageOps.exif_transpose(img)
     w, h = img.size
     if min(w, h) < MIN_DIMENSION:
         raise PhotoValidationError("too_small")

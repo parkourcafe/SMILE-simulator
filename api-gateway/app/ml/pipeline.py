@@ -66,12 +66,11 @@ async def run_pipeline(
     settings = get_settings()
     size = settings.result_image_size
 
-    # 1–2. validate + normalize
+    # 1–2. validate (EXIF-corrected) then face-aware square crop to `size`
     original = photo.load_and_validate(photo_bytes)
-    normalized = photo.normalize(original, size=size)
 
-    # 3–4. face mesh + mouth mask
-    landmarks = face_mesh.detect_mouth(normalized)
+    # 3–4. face mesh (detect + crop around the face) + mouth mask
+    normalized, landmarks = face_mesh.detect_and_crop(original, size=size)
     mask_img = mask.build_mouth_mask(landmarks)
     mask_bytes = mask.mask_to_png_bytes(mask_img)
 
