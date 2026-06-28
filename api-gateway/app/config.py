@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
     supabase_jwt_secret: str = ""
     supabase_storage_bucket: str = "photos"
+    # Postgres schema holding the app tables. "public" by default; set to a namespace
+    # (e.g. "smile") when sharing a project — it must be exposed to PostgREST.
+    supabase_db_schema: str = "public"
 
     # Inference
     inference_provider: str = "fal_flux_pro_fill"

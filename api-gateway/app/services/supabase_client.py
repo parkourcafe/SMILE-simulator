@@ -53,6 +53,13 @@ class SupabaseClient:
         }
         if prefer:
             headers["Prefer"] = prefer
+        # Target a non-default Postgres schema via PostgREST profile headers. Only sent
+        # when the app tables live outside `public` (the schema must be exposed to
+        # PostgREST). Accept-Profile applies to reads, Content-Profile to writes.
+        schema = self.settings.supabase_db_schema
+        if schema and schema != "public":
+            headers["Accept-Profile"] = schema
+            headers["Content-Profile"] = schema
         return headers
 
     # --- PostgREST helpers --------------------------------------------------

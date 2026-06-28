@@ -18,7 +18,9 @@ create type lead_status       as enum ('new', 'notified', 'contacted', 'booked',
 -- updated_at trigger helper
 -- ---------------------------------------------------------------------------
 create or replace function set_updated_at()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql
+set search_path = ''   -- pin search_path (Supabase linter 0011); only uses now()/NEW
+as $$
 begin
   new.updated_at = now();
   return new;
