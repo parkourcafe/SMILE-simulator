@@ -30,7 +30,7 @@ def _verify_hmac(secret: str, body: bytes, signature: str | None) -> bool:
     return hmac.compare_digest(expected, signature)
 
 
-async def _activate_pack(user_id: str, pack_type: str, payment_id: str) -> None:
+async def activate_pack(user_id: str, pack_type: str, payment_id: str) -> None:
     sb = get_supabase()
     pack_def = PACKS.get(pack_type)
     if not pack_def:
@@ -88,7 +88,7 @@ async def yookassa_webhook(request: Request) -> dict:
             filters={"id": f"eq.{existing[0]['id']}"},
             patch={"provider_payment_id": provider_payment_id},
         )
-        await _activate_pack(user_id, pack_type, existing[0]["id"])
+        await activate_pack(user_id, pack_type, existing[0]["id"])
     return {"ok": True}
 
 

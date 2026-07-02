@@ -44,10 +44,20 @@ app.include_router(webhooks.router, prefix="/v1")
 
 @app.get("/health", tags=["meta"])
 async def health() -> dict:
+    effective_provider = (
+        "mock"
+        if (settings.mock_inference or not settings.fal_api_key)
+        else settings.inference_provider
+    )
     return {
         "status": "ok",
         "version": __version__,
         "env": settings.app_env,
         "supabase_configured": bool(settings.supabase_url and settings.supabase_service_role_key),
-        "inference_provider": settings.inference_provider,
+        "inference_provider": effective_provider,
+        "mocks": {
+            "inference": settings.mock_inference,
+            "auth": settings.mock_auth,
+            "payments": settings.mock_payments,
+        },
     }

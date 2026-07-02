@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.config import get_settings
 from app.deps import CurrentUser, get_current_user
+from app.routers.webhooks import activate_pack
 from app.schemas import MyPackOut, PackOption, PurchaseRequest, PurchaseResponse
 from app.services.catalog import PACKS, price_for
 from app.services.supabase_client import get_supabase
@@ -62,6 +63,7 @@ async def purchase(
     currency = "UZS" if body.provider in {"click", "payme"} else "RUB"
     amount, cur = price_for(body.pack_type, currency)
 
+    settings = get_settings()
     sb = get_supabase()
     payment = await sb.insert(
         "payments",
@@ -76,7 +78,15 @@ async def purchase(
         },
     )
 
-    # TODO(phase-3): create the real payment at YooKassa/Click and return its URL.
-    base = get_settings().api_base_url
+    base = settings.api_base_url
+    if settings.mock_payments:
+        # MOCK_PAYMENTS: no real provider call. Simulate an instantly-succeeded payment
+        # so the pack unlocks and the client flow is testable end-to-end. The REAL
+        # webhook path (signature verify + idempotency) is still exercised by fixtures.
+        await activate_pack(user.id, body.pack_type, payment["id"])
+        checkout_url = f"{base}/checkout/mock?payment_id={payment['id']}&status=succeeded"
+        return PurchaseResponse(payment_id=payment["id"], payment_url=checkout_url)
+
+    # TODO(phase-3, SELENA): create the real payment at YooKassa/Click and return its URL.
     checkout_url = f"{base}/checkout/mock?payment_id={payment['id']}"
     return PurchaseResponse(payment_id=payment["id"], payment_url=checkout_url)

@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     app_env: str = "development"
     api_base_url: str = "http://localhost:8000"
 
+    # Mock flags (v1.1). Default TRUE so a fresh clone runs the whole product with
+    # zero external credentials. Flip to false once real keys are in .env (see SETUP.md).
+    mock_inference: bool = True  # MockProvider instead of Fal.ai
+    mock_auth: bool = True  # accept a dev stub token instead of verifying Supabase JWT
+    mock_payments: bool = True  # simulate YooKassa payment creation (webhook stays real)
+
     # Supabase
     supabase_url: str = ""
     supabase_anon_key: str = ""
@@ -52,6 +58,9 @@ class Settings(BaseSettings):
     whatsapp_api_base: str = "https://graph.facebook.com/v21.0"
     whatsapp_token: str = ""
     whatsapp_phone_id: str = ""
+
+    # Error tracking (optional). When set, backend reports errors to Sentry.
+    sentry_dsn: str = ""
 
     # Misc
     photo_retention_days: int = 30
