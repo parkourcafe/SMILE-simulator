@@ -1,0 +1,35 @@
+# Local dev stack. The backend is MOCK-FIRST: `docker compose up backend` boots the
+# API at http://localhost:8000 (docs at /docs) with zero external credentials —
+# the generation journey (upload → style → theater → result) works on mocks.
+#
+# Data-backed screens (styles, clinics, price estimates, leads) read through the
+# Supabase REST layer, not raw Postgres — point SUPABASE_* at the hosted project
+# (already provisioned, see SETUP.md) or run `supabase start`. The `db` service
+# below is a plain local Postgres for future direct-DB work; it is optional and NOT
+# wired to the app yet (our migrations are Supabase-flavored — they reference
+# auth.users — so they are applied via Supabase, not this container).
+services:
+  backend:
+    build: ./backend
+    environment:
+      APP_ENV: development
+      MOCK_INFERENCE: "true"
+      MOCK_AUTH: "true"
+      MOCK_PAYMENTS: "true"
+      # Optional — fill to enable data-backed screens against the hosted project:
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  # Optional local Postgres (not yet wired to the app — see note above).
+  db:
+    image: postgres:16-alpine
+    profiles: ["with-db"]
+    environment:
+      POSTGRES_USER: smile
+      POSTGRES_PASSWORD: smile
+      POSTGRES_DB: smile
+    ports:
+      - "5432:5432"
