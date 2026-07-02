@@ -1,7 +1,7 @@
 [project]
 name = "smile-simulator-api"
 version = "0.1.0"
-description = "AI Smile Simulator — API gateway (inference orchestration, auth, limits, payments)"
+description = "AI Smile Simulator — backend (inference orchestration, auth, limits, payments)"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.110",
@@ -32,11 +32,6 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B"]
 # B008: FastAPI's `Depends()`/`Header()` in argument defaults is the idiomatic pattern.
 ignore = ["B008"]
-
-[tool.ruff.lint.per-file-ignores]
-# The spike runner must manipulate sys.path before importing the app package, so
-# imports are intentionally not at the top / not isort-ordered.
-"scripts/phase0/run_spike.py" = ["E402", "I001"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -13,16 +13,16 @@
 prompt to the Fal.ai `fal-ai/flux-pro/v1/fill` playground. Fastest to eyeball, but the
 mask is not the one we ship.
 
-**B. Batch runner (recommended).** `api-gateway/scripts/phase0/run_spike.py` runs each
+**B. Batch runner (recommended).** `scripts/phase0/run_spike.py` runs each
 selfie through the **same pipeline as the MVP** (auto mouth mask + our prompts +
 provider abstraction), so the result predicts production quality, and it auto-builds
 the before/after pairs + scorecard. Prefer B; use A only for quick spot checks.
 
 ```bash
-cd api-gateway
+cd backend
 pip install -e ".[ml]"                 # MediaPipe + OpenCV for REAL mouth landmarks
 export FAL_API_KEY=...                  # from fal.ai dashboard
-cd scripts/phase0
+cd ../scripts/phase0
 python run_spike.py --input ./selfies --output ./out --styles all
 
 # offline sanity check (no key, no cost, approximate mask):

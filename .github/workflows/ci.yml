@@ -6,12 +6,12 @@ on:
   pull_request:
 
 jobs:
-  api-gateway:
-    name: API gateway — lint + test
+  backend:
+    name: Backend — lint + test
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: api-gateway
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,12 +27,12 @@ jobs:
       - name: Pytest
         run: pytest -q
 
-  mobile:
+  app:
     name: Flutter — analyze
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: mobile
+        working-directory: app
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2

@@ -30,15 +30,14 @@ import io
 import sys
 from pathlib import Path
 
-# Make the api-gateway package importable when run directly from scripts/phase0.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+# Make the backend package importable when run directly from scripts/phase0.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
 
 from PIL import Image  # noqa: E402
+from styles import STYLES  # noqa: E402  (local module)
 
 from app.ml import pipeline  # noqa: E402
 from app.ml.providers.base import GenerationResult  # noqa: E402
-
-from styles import STYLES  # noqa: E402  (local module)
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 

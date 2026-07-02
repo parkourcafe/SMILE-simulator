@@ -1,10 +1,10 @@
 # Phase 0 spike runner
 
 Batch-tests mouth inpainting on real selfies using the production pipeline.
-Full procedure and go/no-go criteria: [`docs/Phase0_Spike_Checklist.md`](../../../docs/Phase0_Spike_Checklist.md).
+Full procedure and go/no-go criteria: [`docs/Phase0_Spike_Checklist.md`](../../docs/Phase0_Spike_Checklist.md).
 
 ```bash
-cd api-gateway
+cd backend
 pip install -e ".[ml]"          # real MediaPipe landmarks (required for a valid spike)
 
 # MediaPipe Tasks needs a model bundle + OpenGL system libs:
@@ -14,7 +14,7 @@ curl -L -o .cache/face_landmarker.task \
 # Debian/Ubuntu: apt-get install -y libgles2 libegl1 libgl1
 
 export FAL_API_KEY=...
-cd scripts/phase0
+cd ../scripts/phase0
 python run_spike.py --input ./selfies --output ./out --styles all
 ```
 

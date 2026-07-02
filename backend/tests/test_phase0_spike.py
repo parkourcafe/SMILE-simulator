@@ -9,7 +9,8 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts" / "phase0"
+# scripts/ lives at the repo root (sibling of backend/), so go up two levels.
+SCRIPT_DIR = Path(__file__).resolve().parents[2] / "scripts" / "phase0"
 
 
 @pytest.fixture

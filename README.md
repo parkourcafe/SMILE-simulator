@@ -41,26 +41,37 @@ swapped for Replicate / self-hosted without touching the pipeline.
 ## Repository layout
 
 ```
-api-gateway/      FastAPI orchestration layer (the heart of the system)
+backend/          FastAPI orchestration layer (the heart of the system)
   app/
     routers/      generate, packs, styles, clinics, leads, admin, webhooks
     ml/           face mesh, mask generation, prompts, provider abstraction
-    services/     Supabase client, storage helpers
+    services/     Supabase client, storage helpers, notifications
   tests/          pytest suite
 supabase/
-  migrations/     Postgres schema (7 tables), RLS policies, style seed data
-mobile/           Flutter app skeleton (screens, routes, Riverpod, API client)
+  migrations/     Postgres schema (8 tables), RLS policies, seed data
+app/              Flutter app (16 screens, routes, Riverpod, API client)
+scripts/          quality / spike harness (scripts/phase0)
 docs/             Architecture spec + partner brief
 .github/workflows ci.yml — lint + test
 ```
 
-## Quick start (API gateway)
+## Quick start (mock-first — no keys required)
+
+Everything runs behind mock flags (`MOCK_INFERENCE`, `MOCK_AUTH`, `MOCK_PAYMENTS`,
+all default `true`), so a partner can clone and click through the whole product
+before a single real credential exists.
 
 ```bash
-cd api-gateway
+make check          # ruff + pytest (+ flutter analyze if flutter is installed)
+```
+
+### Backend
+
+```bash
+cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env          # fill in Supabase + Fal.ai keys
+cp .env.example .env          # defaults are mock-friendly; fill real keys later
 uvicorn app.main:app --reload
 # OpenAPI docs at http://localhost:8000/docs
 ```
@@ -71,19 +82,16 @@ Run the database migrations against your Supabase project:
 supabase db push          # or apply supabase/migrations/*.sql manually
 ```
 
-Run the tests:
+### Flutter app
 
 ```bash
-cd api-gateway && pytest
-```
-
-## Quick start (Flutter)
-
-```bash
-cd mobile
+cd app
 flutter pub get
 flutter run            # requires API_BASE_URL + SUPABASE_URL/ANON_KEY via --dart-define
 ```
+
+See [`SETUP.md`](SETUP.md) for the full manual-setup checklist (real Supabase / Fal.ai
+/ YooKassa / SMTP credentials and the order to flip mock flags).
 
 ## Configuration decisions (per architecture §13)
 
