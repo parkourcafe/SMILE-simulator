@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     # Error tracking (optional). When set, backend reports errors to Sentry.
     sentry_dsn: str = ""
 
+    # Dev artifacts (branded-result HTML rendered to file when SMTP is unconfigured).
+    artifacts_dir: str = ".artifacts"
+
     # Misc
     photo_retention_days: int = 30
     result_image_size: int = 1024

@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 
 from app.deps import CurrentUser, get_current_user
 from app.schemas import LeadOut, LeadRequest
+from app.services.branded_delivery import deliver_branded_result
 from app.services.notifications import notify_clinic
 from app.services.supabase_client import get_supabase
 
@@ -62,6 +63,25 @@ async def submit_lead(body: LeadRequest, user: CurrentUser = Depends(get_current
     if notice.ok:
         patch["clinic_notified_at"] = "now()"
     await sb.update("leads", filters={"id": f"eq.{lead['id']}"}, patch=patch)
+
+    # Branded result delivery (v1.1): the patient gets their before/after under the
+    # chosen clinic's brand. Best-effort — never fails the lead.
+    before_url = None
+    if gens[0].get("original_photo_url"):
+        try:
+            before_url = await sb.create_signed_url(gens[0]["original_photo_url"], expires_in=86400)
+        except Exception:  # noqa: BLE001
+            before_url = None
+    try:
+        await deliver_branded_result(
+            clinic=clinic,
+            lead=lead,
+            patient_email=user.email,
+            before_url=before_url,
+            after_url=result_url,
+        )
+    except Exception:  # noqa: BLE001 - branded delivery must not break lead submission
+        log.warning("branded delivery raised for lead %s", lead["id"])
 
     return LeadOut(
         id=lead["id"],

@@ -1,6 +1,10 @@
 # ---- ML model cache (downloaded bundles, not source) ----
 backend/.cache/
 
+# ---- Dev artifacts (branded-result HTML rendered in mock mode) ----
+backend/.artifacts/
+.artifacts/
+
 # ---- Python / FastAPI (backend) ----
 __pycache__/
 *.py[cod]
