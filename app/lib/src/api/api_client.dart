@@ -88,6 +88,17 @@ class ApiClient {
     return resp.data['payment_url'] as String?;
   }
 
+  // --- Price estimates (cost anchor) ---------------------------------------
+  Future<List<PriceEstimate>> priceEstimates({String? city, String? styleId}) async {
+    final resp = await _dio.get('/api/price-estimates', queryParameters: {
+      if (city != null) 'city': city,
+      if (styleId != null) 'style_id': styleId,
+    });
+    return (resp.data as List)
+        .map((e) => PriceEstimate.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   // --- Clinics & leads ------------------------------------------------------
   Future<List<Clinic>> clinics({String? city, double? lat, double? lng}) async {
     final resp = await _dio.get('/api/clinics', queryParameters: {

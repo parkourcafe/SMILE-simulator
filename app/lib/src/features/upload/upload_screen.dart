@@ -20,7 +20,7 @@ class UploadScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Upload a selfie')),
+      appBar: AppBar(title: const Text('Загрузите селфи')),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -31,7 +31,7 @@ class UploadScreen extends ConsumerWidget {
               child: Padding(
                 padding: EdgeInsets.all(16),
                 child: Text(
-                  'Face the camera. Open your mouth slightly. Good lighting.',
+                  'Анфас к камере. Слегка приоткройте рот. Хорошее освещение.',
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -39,13 +39,13 @@ class UploadScreen extends ConsumerWidget {
             const SizedBox(height: 32),
             FilledButton.icon(
               icon: const Icon(Icons.camera_alt_outlined),
-              label: const Text('Take a photo'),
+              label: const Text('Сделать фото'),
               onPressed: () => _pick(context, ref, ImageSource.camera),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               icon: const Icon(Icons.photo_library_outlined),
-              label: const Text('Choose from gallery'),
+              label: const Text('Выбрать из галереи'),
               onPressed: () => _pick(context, ref, ImageSource.gallery),
             ),
           ],

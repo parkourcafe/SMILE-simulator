@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../api/models.dart';
+import 'entitlements.dart';
 import 'providers.dart';
 
 /// Holds the in-progress generation flow: picked photo → style → result.
@@ -77,6 +78,10 @@ class GenerationFlow extends StateNotifier<GenerationFlowState> {
       state = state.copyWith(busy: false, generation: gen);
       if (gen.status == GenerationStatus.failed) {
         state = state.copyWith(error: gen.errorMessage ?? 'Generation failed.');
+      } else if (gen.status == GenerationStatus.completed) {
+        // A successful generation spends one credit (free tier first). This is what
+        // makes the NEXT attempt action-lock into the paywall.
+        _ref.read(entitlementsProvider.notifier).consumeOne();
       }
       return gen.id;
     } catch (e) {

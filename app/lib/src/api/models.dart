@@ -89,6 +89,42 @@ class PackOption {
       );
 }
 
+class PriceEstimate {
+  final String id;
+  final String city;
+  final String? styleId;
+  final String treatmentLabel;
+  final String treatmentLabelRu;
+  final double priceMin;
+  final double priceMax;
+  final String currency;
+  final bool isEstimate;
+
+  PriceEstimate({
+    required this.id,
+    required this.city,
+    this.styleId,
+    required this.treatmentLabel,
+    required this.treatmentLabelRu,
+    required this.priceMin,
+    required this.priceMax,
+    required this.currency,
+    this.isEstimate = true,
+  });
+
+  factory PriceEstimate.fromJson(Map<String, dynamic> j) => PriceEstimate(
+        id: j['id'] as String,
+        city: j['city'] as String,
+        styleId: j['style_id'] as String?,
+        treatmentLabel: j['treatment_label'] as String,
+        treatmentLabelRu: j['treatment_label_ru'] as String,
+        priceMin: (j['price_min'] as num).toDouble(),
+        priceMax: (j['price_max'] as num).toDouble(),
+        currency: j['currency'] as String,
+        isEstimate: j['is_estimate'] as bool? ?? true,
+      );
+}
+
 class Clinic {
   final String id;
   final String name;
