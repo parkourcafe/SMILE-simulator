@@ -63,6 +63,19 @@ class StyleOut(BaseModel):
     sort_order: int = 0
 
 
+# --- Price estimates (v1.1 cost anchor) -------------------------------------
+class PriceEstimateOut(BaseModel):
+    id: UUID
+    city: str
+    style_id: UUID | None = None
+    treatment_label: str
+    treatment_label_ru: str
+    price_min: float
+    price_max: float
+    currency: str
+    is_estimate: bool = True
+
+
 # --- Packs / payments -------------------------------------------------------
 class PackOption(BaseModel):
     pack_type: PackTypeStr

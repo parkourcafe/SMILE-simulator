@@ -14,7 +14,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.config import get_settings
-from app.routers import admin, clinics, generate, leads, packs, styles, webhooks
+from app.routers import (
+    admin,
+    clinics,
+    generate,
+    leads,
+    packs,
+    price_estimates,
+    styles,
+    webhooks,
+)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -37,6 +46,7 @@ app.include_router(generate.router, prefix="/v1")
 app.include_router(styles.router, prefix="/v1")
 app.include_router(packs.router, prefix="/v1")
 app.include_router(clinics.router, prefix="/v1")
+app.include_router(price_estimates.router, prefix="/v1")
 app.include_router(leads.router, prefix="/v1")
 app.include_router(admin.router, prefix="/v1")
 app.include_router(webhooks.router, prefix="/v1")
