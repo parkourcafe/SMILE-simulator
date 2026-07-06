@@ -1,4 +1,5 @@
 /// DTOs mirroring the API gateway responses (see backend/app/schemas.py).
+library;
 
 class Style {
   final String id;

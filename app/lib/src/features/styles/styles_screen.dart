@@ -38,7 +38,7 @@ class StylesScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: Container(
-                        color: Colors.teal.withOpacity(0.1),
+                        color: Colors.teal.withValues(alpha: 0.1),
                         child: s.isPremium
                             ? const Icon(Icons.lock_outline)
                             : const Icon(Icons.face_retouching_natural),
