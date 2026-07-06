@@ -1,0 +1,1067 @@
+<title>Smile — AI-визуализация улыбки до визита в клинику</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Smile превращает селфи в AI-визуализацию возможной улыбки, помогает сравнить стили и отправить заявку в клинику для точной оценки.">
+<style>
+  /* ============ tokens (committed dark cinematic — single theme) ============ */
+  :root {
+    color-scheme: dark;
+    --bg: #0A0A0B;
+    --bg-2: #111114;
+    --surface: rgba(255,255,255,0.06);
+    --surface-2: rgba(255,255,255,0.10);
+    --ink: #F7F3EA;
+    --ink-2: rgba(247,243,234,0.72);
+    --ink-3: rgba(247,243,234,0.5);
+    --accent: #F6DFA8;
+    --accent-2: #BFD7FF;
+    --note: #D8C7A1;
+    --line: rgba(255,255,255,0.12);
+    --radius: 18px;
+    --ease: cubic-bezier(.22,.61,.36,1);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .display {
+    font-family: Georgia, "Times New Roman", "Noto Serif", serif;
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    line-height: 1.12;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { color: var(--ink); }
+  a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 88px 0; }
+  section.tight { padding: 64px 0; }
+  .kicker {
+    font-size: 12px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 14px;
+  }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  h2 { font-size: clamp(28px, 3.8vw, 42px); margin-bottom: 14px; }
+  .sub { color: var(--ink-2); max-width: 44em; margin: 0; }
+  .section-head { max-width: 720px; margin-bottom: 44px; }
+
+  /* ============ header ============ */
+  header.site {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10,10,11,.82); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; }
+  .logo { font-family: Georgia, serif; font-size: 23px; color: var(--ink); letter-spacing: .01em; }
+  .logo i { font-style: normal; color: var(--accent); }
+  nav.top { display: flex; gap: 26px; align-items: center; font-size: 15px; }
+  nav.top a { color: var(--ink-2); }
+  nav.top a:hover { color: var(--ink); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    border-radius: 12px; padding: 13px 24px; font-size: 15.5px; font-weight: 600;
+    border: 1px solid transparent; cursor: pointer;
+    transition: transform .18s var(--ease), background .18s var(--ease), border-color .18s var(--ease);
+  }
+  .btn-primary { background: var(--accent); color: #141310; }
+  .btn-primary:hover { transform: translateY(-1px); color: #141310; }
+  .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm { padding: 9px 18px; font-size: 14px; }
+  .burger {
+    display: none; background: none; border: 1px solid var(--line); color: var(--ink);
+    border-radius: 10px; padding: 8px 12px; font-size: 18px; line-height: 1; cursor: pointer;
+  }
+  .mobile-nav { display: none; border-top: 1px solid var(--line); padding: 14px 0 18px; }
+  .mobile-nav.open { display: block; }
+  .mobile-nav a { display: block; padding: 10px 0; color: var(--ink-2); font-size: 16px; }
+  @media (max-width: 860px) {
+    nav.top { display: none; }
+    .burger { display: block; }
+  }
+
+  /* ============ hero ============ */
+  .hero {
+    position: relative; overflow: hidden;
+    padding: 96px 0 100px;
+    background:
+      radial-gradient(1100px 500px at 78% -10%, rgba(246,223,168,.10), transparent 60%),
+      radial-gradient(900px 500px at 10% 110%, rgba(191,215,255,.07), transparent 60%),
+      var(--bg);
+  }
+  .hero-media { position: absolute; inset: 0; z-index: 0; }
+  .hero-media video { width: 100%; height: 100%; object-fit: cover; opacity: .34; }
+  .hero-media .veil {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(10,10,11,.55), rgba(10,10,11,.78) 60%, var(--bg) 98%);
+  }
+  .hero > .wrap { position: relative; z-index: 1; }
+  .hero-grid { display: grid; grid-template-columns: 1.02fr .98fr; gap: 64px; align-items: center; }
+  @media (max-width: 960px) { .hero-grid { grid-template-columns: 1fr; gap: 56px; } }
+
+  .hero h1 { font-size: clamp(36px, 5vw, 56px); margin: 20px 0 20px; }
+  .hero h1 em { font-style: italic; color: var(--accent); }
+  .hero .lede { font-size: 18.5px; color: var(--ink-2); max-width: 36em; margin: 0 0 30px; }
+  .eyebrow {
+    display: inline-block; font-size: 12px; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--ink-2); border: 1px solid var(--line); border-radius: 999px;
+    padding: 7px 15px; background: var(--surface);
+  }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .trust-line { margin-top: 20px; font-size: 13.5px; color: var(--note); max-width: 36em; }
+  .micro { margin-top: 8px; font-size: 12.5px; color: var(--ink-3); max-width: 36em; }
+
+  /* entrance */
+  .rise { opacity: 0; transform: translateY(18px); animation: rise .8s var(--ease) forwards; }
+  .rise.d1 { animation-delay: .08s; } .rise.d2 { animation-delay: .18s; }
+  .rise.d3 { animation-delay: .28s; } .rise.d4 { animation-delay: .38s; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+
+  /* ============ hero product scene ============ */
+  .scene { position: relative; }
+  .device {
+    position: relative; margin: 0 auto; width: min(330px, 88%);
+    border-radius: 30px; border: 1px solid var(--line);
+    background: linear-gradient(175deg, #141418, #0D0D10);
+    box-shadow: 0 40px 90px -40px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.08);
+    padding: 20px 18px 22px;
+  }
+  .device .cap { font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 12px; }
+  .frame {
+    position: relative; border-radius: 16px; overflow: hidden;
+    background: linear-gradient(165deg, #1B1C21, #121317);
+    border: 1px solid var(--line);
+    aspect-ratio: 4/4.4; display: grid; place-items: center;
+  }
+  .silhouette { width: 62%; height: auto; color: rgba(247,243,234,.16); }
+  .scanline {
+    position: absolute; left: 8%; right: 8%; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-2), transparent);
+    opacity: .8; top: 12%;
+    animation: scan 4.5s ease-in-out infinite;
+  }
+  @keyframes scan { 0%,100% { top: 12%; } 50% { top: 84%; } }
+  .frame .ok {
+    position: absolute; left: 12px; bottom: 12px;
+    font-size: 11.5px; color: #CBE3C6; background: rgba(30,40,28,.75);
+    border: 1px solid rgba(203,227,198,.25); border-radius: 999px; padding: 4px 11px;
+  }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 4px; }
+  .chip {
+    font-size: 12.5px; color: var(--ink-2); border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 12px; background: var(--surface);
+  }
+  .chip.on { color: #141310; background: var(--accent); border-color: var(--accent); font-weight: 600; }
+  .device .ba {
+    position: relative; margin-top: 14px; height: 62px; border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--line);
+    background: linear-gradient(90deg, #45392C 0 50%, #C9D9CF 50% 100%);
+  }
+  .device .ba .split {
+    position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: #fff;
+    animation: glide 5.5s ease-in-out infinite;
+  }
+  @keyframes glide { 0%,100% { left: 46%; } 50% { left: 58%; } }
+  .device .ba .tag {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.85);
+  }
+  .device .ba .tag.b { left: 10px; }
+  .device .ba .tag.a { right: 10px; color: #3A4A40; }
+  .device .foot { margin-top: 14px; font-size: 12px; color: var(--ink-3); line-height: 1.5; }
+
+  .float-card {
+    position: absolute; width: 218px;
+    background: rgba(22,22,26,.88); backdrop-filter: blur(10px);
+    border: 1px solid var(--line); border-radius: 16px; padding: 16px;
+    box-shadow: 0 24px 60px -28px rgba(0,0,0,.85);
+    animation: floaty 7s ease-in-out infinite;
+  }
+  .float-card h3 { font-size: 14px; margin-bottom: 10px; }
+  .float-card .row { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--ink-2); padding: 3px 0; }
+  .float-card .row .tick { color: #9CC79A; font-weight: 700; }
+  .float-card .status { margin-top: 10px; font-size: 11.5px; color: var(--note); }
+  .float-card .go { display: inline-block; margin-top: 10px; font-size: 12.5px; color: var(--accent-2); }
+  .fc1 { top: -6%; left: -14%; animation-delay: 0s; }
+  .fc2 { bottom: 18%; right: -16%; animation-delay: 1.6s; }
+  .fc3 { bottom: -8%; left: -8%; animation-delay: 3.1s; }
+  @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+  @media (max-width: 1130px) { .fc1 { left: -4%; } .fc2 { right: -4%; } .fc3 { left: 0; } }
+  @media (max-width: 960px) {
+    .float-card { position: static; width: auto; animation: none; margin-top: 12px; }
+    .float-stack { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-top: 18px; }
+  }
+
+  /* ============ generic cards & grids ============ */
+  .cards { display: grid; gap: 16px; }
+  .cards.c2 { grid-template-columns: repeat(2, 1fr); }
+  .cards.c3 { grid-template-columns: repeat(3, 1fr); }
+  .cards.c4 { grid-template-columns: repeat(4, 1fr); }
+  .cards.c5 { grid-template-columns: repeat(5, 1fr); }
+  @media (max-width: 1000px) { .cards.c5, .cards.c4 { grid-template-columns: repeat(2, 1fr); } .cards.c3 { grid-template-columns: 1fr; } }
+  @media (max-width: 560px) { .cards.c5, .cards.c4, .cards.c2 { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 24px 22px;
+  }
+  .card h3 { font-size: 17.5px; margin-bottom: 8px; }
+  .card p { margin: 0; font-size: 14.5px; color: var(--ink-2); }
+  .card .num {
+    font-family: Georgia, serif; font-style: italic; font-size: 26px; color: var(--accent);
+    display: block; margin-bottom: 8px;
+  }
+  .card .res { margin-top: 10px; font-size: 13px; color: var(--accent-2); }
+
+  /* problem section */
+  .versus { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 36px; }
+  @media (max-width: 800px) { .versus { grid-template-columns: 1fr; } }
+  .versus .col { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; }
+  .versus .col.now { background: linear-gradient(170deg, rgba(246,223,168,.10), rgba(246,223,168,.03)); border-color: rgba(246,223,168,.28); }
+  .versus h3 { font-size: 15px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 16px; }
+  .versus .col.now h3 { color: var(--accent); }
+  .versus ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  .versus li { display: flex; gap: 11px; font-size: 15.5px; color: var(--ink-2); }
+  .versus li .m { flex: none; }
+  .versus .old .m { color: var(--ink-3); }
+  .versus .now .m { color: var(--accent); }
+
+  /* before/after demo (real AI photo pair; gradients remain as fallback) */
+  .ba-demo {
+    position: relative; border-radius: 20px; overflow: hidden;
+    border: 1px solid var(--line); aspect-ratio: 3/2;
+    user-select: none; touch-action: none; cursor: ew-resize; max-width: 720px;
+  }
+  .ba-demo .layer { position: absolute; inset: 0; }
+  .ba-demo .before { background: linear-gradient(160deg, #3E3428, #241F18); }
+  .ba-demo .after { background: linear-gradient(160deg, #DCE7DF, #A9C4B4); clip-path: inset(0 0 0 var(--x, 50%)); }
+  .ba-demo .layer img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ba-demo .divider { position: absolute; top: 0; bottom: 0; left: var(--x, 50%); width: 2px; background: #fff; }
+  .ba-demo .handle {
+    position: absolute; top: 50%; left: var(--x, 50%); transform: translate(-50%,-50%);
+    width: 44px; height: 44px; border-radius: 50%; background: #F7F3EA; color: #141310;
+    display: grid; place-items: center; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  }
+  .ba-demo .lbl { position: absolute; top: 12px; font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: #fff; background: rgba(0,0,0,.4); padding: 4px 11px; border-radius: 999px; }
+  .ba-demo .lbl.b { left: 12px; } .ba-demo .lbl.a { right: 12px; }
+  .ba-note { margin-top: 12px; font-size: 13px; color: var(--ink-3); }
+
+  /* demo film */
+  .demo-grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; align-items: stretch; }
+  @media (max-width: 900px) { .demo-grid { grid-template-columns: 1fr; } }
+  .demo-shell {
+    border: 1px solid var(--line); border-radius: 22px; overflow: hidden;
+    background: #000; box-shadow: 0 40px 90px -40px rgba(0,0,0,.9);
+  }
+  .demo-shell video { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .demo-side {
+    border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--bg-2);
+  }
+  .demo-side img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .demo-shell.solo { max-width: 880px; }
+  .demo-shell.solo video { height: auto; }
+  .media-note { margin-top: 12px; font-size: 13px; color: var(--ink-3); max-width: 52em; }
+
+  .photo-card {
+    border-radius: 20px; overflow: hidden; border: 1px solid var(--line);
+    margin-bottom: 16px;
+  }
+  .photo-card img { display: block; width: 100%; height: auto; }
+
+  /* clinics band */
+  .band {
+    background: linear-gradient(170deg, var(--bg-2), #0C0C0F);
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  }
+  .split-2 { display: grid; grid-template-columns: 1.1fr .9fr; gap: 56px; align-items: start; }
+  @media (max-width: 900px) { .split-2 { grid-template-columns: 1fr; gap: 36px; } }
+  ul.ticks { margin: 22px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  ul.ticks li { display: flex; gap: 12px; font-size: 16px; color: var(--ink-2); }
+  ul.ticks .tick { color: var(--accent); font-weight: 700; flex: none; }
+
+  /* FAQ */
+  details.faq {
+    border: 1px solid var(--line); border-radius: 14px; background: var(--surface);
+    padding: 0 22px; margin-bottom: 12px;
+  }
+  details.faq summary {
+    cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px;
+    padding: 19px 0; font-size: 16.5px; font-weight: 600;
+  }
+  details.faq summary::-webkit-details-marker { display: none; }
+  details.faq summary::after { content: "+"; color: var(--accent); font-size: 20px; flex: none; }
+  details.faq[open] summary::after { content: "–"; }
+  details.faq p { margin: 0 0 20px; color: var(--ink-2); font-size: 15px; max-width: 60em; }
+
+  /* forms */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .form-grid { grid-template-columns: 1fr; } }
+  form.lead {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 30px 28px;
+  }
+  form.lead h3 { font-size: 21px; margin-bottom: 6px; }
+  form.lead .fh { font-size: 14px; color: var(--ink-2); margin: 0 0 20px; }
+  .field { margin-bottom: 15px; }
+  .field label { display: block; font-size: 13.5px; color: var(--ink-2); margin-bottom: 6px; }
+  .field input, .field select, .field textarea {
+    width: 100%; background: rgba(0,0,0,.35); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 15px;
+    font-family: inherit;
+  }
+  .field textarea { min-height: 74px; resize: vertical; }
+  .radio-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .radio-row label { display: flex; gap: 8px; align-items: center; font-size: 14.5px; color: var(--ink-2); cursor: pointer; }
+  .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--ink-3); margin: 16px 0 18px; }
+  .consent input { margin-top: 3px; }
+  .form-msg { margin-top: 14px; font-size: 14px; }
+  .form-msg.ok { color: #9CC79A; }
+  .form-msg.err { color: #E3A9A0; }
+
+  /* footer */
+  footer.site {
+    border-top: 1px solid var(--line); padding: 48px 0 60px;
+    font-size: 13.5px; color: var(--ink-3); background: var(--bg-2);
+  }
+  footer .cols { display: flex; justify-content: space-between; gap: 36px; flex-wrap: wrap; }
+  footer .disc { max-width: 46em; line-height: 1.7; }
+
+  /* reveal on scroll */
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
+  .reveal.in { opacity: 1; transform: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .rise, .reveal { opacity: 1; transform: none; animation: none; transition: none; }
+    .float-card, .scanline, .device .ba .split { animation: none; }
+  }
+</style>
+
+<!-- ================= HEADER ================= -->
+<header class="site">
+  <div class="wrap">
+    <div class="nav-row">
+      <a class="logo" href="#top" aria-label="Smile — на главную">Smile<i>.</i></a>
+      <nav class="top" aria-label="Основная навигация">
+        <a href="#how">Как работает</a>
+        <a href="#patients">Для пациентов</a>
+        <a href="#clinics">Для клиник</a>
+        <a href="#trust">Доверие</a>
+        <a class="btn btn-primary btn-sm" href="#early-access">Получить ранний доступ</a>
+      </nav>
+      <button class="burger" aria-expanded="false" aria-controls="mnav" id="burger">☰<span class="sr-only"></span></button>
+    </div>
+    <div class="mobile-nav" id="mnav">
+      <a href="#how">Как работает</a>
+      <a href="#patients">Для пациентов</a>
+      <a href="#clinics">Для клиник</a>
+      <a href="#trust">Доверие</a>
+      <a class="btn btn-primary btn-sm" style="margin-top:10px" href="#early-access">Получить ранний доступ</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- ================= 1. CINEMATIC HERO ================= -->
+<!-- Generated media are hotlinked from the generation CDN for now.
+     TODO(SELENA): download the 4 assets and commit/upload as web/assets/* for
+     permanence (CDN links can expire) — see README note in PR. -->
+<section class="hero" aria-label="Главный экран">
+  <div class="hero-media" aria-hidden="true">
+    <video muted loop playsinline preload="metadata" data-autoplay
+      poster="https://d8j0ntlcm91z4.cloudfront.net/user_3EKntK4EDjG8nay4H1dy1TK30mB/hf_20260706_150342_6aa6c3fe-6bac-4a82-a39c-fa8d71d7322f_min.webp">
+      <source src="https://d8j0ntlcm91z4.cloudfront.net/user_3EKntK4EDjG8nay4H1dy1TK30mB/hf_20260706_150155_5ad2ebe6-9451-47a1-9127-51e17100225d.mp4" type="video/mp4">
+    </video>
+    <div class="veil"></div>
+  </div>
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow rise">AI-визуализация улыбки · beta</span>
+      <h1 class="display rise d1">Увидьте, как может выглядеть <em>ваша улыбка</em>, до визита в клинику</h1>
+      <p class="lede rise d2">Smile превращает селфи в AI-визуализацию возможной улыбки, помогает сравнить стили и отправить заявку в клинику для точной оценки.</p>
+      <div class="cta-row rise d3">
+        <a class="btn btn-primary" href="#early-access">Получить ранний доступ</a>
+        <a class="btn btn-ghost" href="#demo">Посмотреть демо</a>
+        <a class="btn btn-ghost" href="#clinics">Я представляю клинику</a>
+      </div>
+      <p class="trust-line rise d4">Это AI-визуализация, а не диагноз, план лечения или гарантия результата.</p>
+      <p class="micro rise d4">Фото используется для создания визуализации. Клиника получает заявку только после вашего действия.</p>
+    </div>
+
+    <div class="scene rise d2" aria-hidden="true">
+      <div class="device">
+        <div class="cap">Проверка кадра</div>
+        <div class="frame">
+          <svg class="silhouette" viewBox="0 0 100 110" fill="currentColor" aria-hidden="true">
+            <circle cx="50" cy="38" r="24"/>
+            <path d="M14 110 C14 82 30 70 50 70 C70 70 86 82 86 110 Z"/>
+          </svg>
+          <div class="scanline"></div>
+          <span class="ok">Свет: хорошо · Лицо: анфас · Улыбка: видна</span>
+        </div>
+        <div class="chips">
+          <span class="chip on">Естественный белый</span>
+          <span class="chip">Ровная</span>
+          <span class="chip">Виниры</span>
+          <span class="chip">Голливудская</span>
+        </div>
+        <div class="ba">
+          <span class="tag b">До</span><span class="tag a">После</span>
+          <div class="split"></div>
+        </div>
+        <p class="foot">Заявка готова к отправке · только после вашего согласия</p>
+      </div>
+
+      <div class="float-card fc1">
+        <h3>Селфи проверено</h3>
+        <div class="row"><span class="tick">✓</span> Лицо в кадре</div>
+        <div class="row"><span class="tick">✓</span> Достаточно света</div>
+        <div class="row"><span class="tick">✓</span> Улыбка видна</div>
+        <div class="status">Следующий шаг: выберите стиль</div>
+        <a class="go" href="#styles">Продолжить →</a>
+      </div>
+      <div class="float-card fc2">
+        <h3>Стиль улыбки</h3>
+        <div class="row">Естественный белый · Ровная</div>
+        <div class="row">Виниры · Голливудская</div>
+        <div class="status">AI готовит визуализацию</div>
+        <a class="go" href="#before-after">Сравнить результат →</a>
+      </div>
+      <div class="float-card fc3">
+        <h3>Запрос в клинику</h3>
+        <div class="row" style="align-items:flex-start">Отправьте визуализацию и получите точную оценку после консультации.</div>
+        <div class="status">Только после вашего согласия</div>
+        <a class="go" href="#clinics">Выбрать клинику →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 1b. DEMO FILM ================= -->
+<section class="tight" id="demo">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Демо</div>
+      <h2 class="display">Посмотрите, как это происходит</h2>
+      <p class="sub">Селфи → проверка кадра → стиль → AI-визуализация → сравнение до/после → заявка в клинику.</p>
+    </div>
+    <div class="demo-grid reveal">
+      <div class="demo-shell">
+        <video controls muted loop playsinline preload="metadata" data-autoplay
+          poster="https://d8j0ntlcm91z4.cloudfront.net/user_3EKntK4EDjG8nay4H1dy1TK30mB/hf_20260706_151313_5644ef24-b83a-4088-ab2c-d27ca08b08ea_min.webp"
+          aria-label="Демонстрационный ролик: как работает приложение Smile">
+          <source src="https://d8j0ntlcm91z4.cloudfront.net/user_3EKntK4EDjG8nay4H1dy1TK30mB/hf_20260706_151311_d8e38371-1312-416e-a75b-22213ffa9195.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="demo-side">
+        <img loading="lazy" width="928" height="1152"
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_3EKntK4EDjG8nay4H1dy1TK30mB/hf_20260706_151326_2dc1f4b2-2b12-41e6-9beb-6036be76ede7_min.webp"
+          alt="Экран телефона с интерфейсом сравнения: портрет улыбки, разделённый линией до и после">
+      </div>
+    </div>
+    <p class="media-note reveal">Видео и изображения — концепт-демонстрация интерфейса, созданы с помощью AI. Это визуализация-ориентир, а не клинический результат.</p>
+  </div>
+</section>
+
+<!-- ================= 2. PROBLEM ================= -->
+<section id="problem">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Почему это сложно</div>
+      <h2 class="display">Сложно решиться на улыбку, которую пока невозможно увидеть</h2>
+      <p class="sub">До консультации человек часто не понимает, какой результат хочет, сколько это может стоить и в какую клинику обращаться. Smile делает первый шаг визуальным: показывает возможный образ улыбки и превращает интерес в понятный запрос.</p>
+    </div>
+    <div class="versus reveal">
+      <div class="col old">
+        <h3>Как сейчас</h3>
+        <ul>
+          <li><span class="m">—</span> Смотреть чужие «до/после» и гадать, подойдёт ли это вам</li>
+          <li><span class="m">—</span> Писать в клиники без понимания желаемого результата</li>
+          <li><span class="m">—</span> Бояться стоимости, боли и навязанных процедур</li>
+          <li><span class="m">—</span> Откладывать консультацию месяцами</li>
+        </ul>
+      </div>
+      <div class="col now">
+        <h3>Со Smile</h3>
+        <ul>
+          <li><span class="m">✓</span> Селфи превращается в визуальный ориентир</li>
+          <li><span class="m">✓</span> Стили улыбки можно сравнить</li>
+          <li><span class="m">✓</span> Запрос в клинику становится конкретнее</li>
+          <li><span class="m">✓</span> Клиника видит интерес пациента до первого звонка</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 3. CORE LOOP ================= -->
+<section class="band tight" id="loop">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Путь пользователя</div>
+      <h2 class="display">От селфи до заявки в клинику</h2>
+    </div>
+    <div class="cards c5">
+      <div class="card reveal">
+        <span class="num">1</span>
+        <h3>Сделайте селфи</h3>
+        <p>Smile проверит свет, положение лица и видимость улыбки.</p>
+        <div class="res">Меньше неудачных фото и пустых генераций.</div>
+      </div>
+      <div class="card reveal">
+        <span class="num">2</span>
+        <h3>Выберите стиль</h3>
+        <p>Естественный белый, ровная улыбка, виниры или Голливудская.</p>
+        <div class="res">Выбор направления вместо «сделайте красиво».</div>
+      </div>
+      <div class="card reveal">
+        <span class="num">3</span>
+        <h3>Получите AI-визуализацию</h3>
+        <p>Система создаёт возможный образ улыбки.</p>
+        <div class="res">Появляется понятный визуальный ориентир.</div>
+      </div>
+      <div class="card reveal">
+        <span class="num">4</span>
+        <h3>Сравните до/после</h3>
+        <p>Пользователь видит разницу и эмоционально понимает результат.</p>
+        <div class="res">Интерес становится намерением.</div>
+      </div>
+      <div class="card reveal">
+        <span class="num">5</span>
+        <h3>Отправьте заявку</h3>
+        <p>Выбранная клиника получает контакт и визуализацию.</p>
+        <div class="res">Консультация начинается с понятного запроса.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 4. HOW IT WORKS ================= -->
+<section id="how">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Механика</div>
+      <h2 class="display">Как работает Smile</h2>
+    </div>
+    <div class="cards c5">
+      <div class="card reveal">
+        <h3>Проверка селфи</h3>
+        <p>Приложение подсказывает, если мало света, лицо не анфас или улыбка плохо видна.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Выбор эстетики</h3>
+        <p>Пользователь выбирает один из четырёх направлений улыбки.</p>
+      </div>
+      <div class="card reveal">
+        <h3>AI-визуализация</h3>
+        <p>Smile создаёт изображение возможного результата. Это ориентир, не медицинское заключение.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Ценовой ориентир</h3>
+        <p>Пользователь видит примерный диапазон и понимает, что точная стоимость зависит от клиники.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Заявка в клинику</h3>
+        <p>Контакт и визуализация отправляются только после действия пользователя.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 5. SMILE STYLES ================= -->
+<section class="band tight" id="styles">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Стили</div>
+      <h2 class="display">Четыре направления для первого выбора</h2>
+    </div>
+    <div class="cards c4">
+      <div class="card reveal">
+        <h3>Естественный белый</h3>
+        <p>Мягкое осветление без ощущения искусственной улыбки.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Ровная улыбка</h3>
+        <p>Акцент на симметрии и аккуратной линии зубов.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Виниры</h3>
+        <p>Более выраженная эстетика формы и тона.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Голливудская</h3>
+        <p>Максимально яркий визуальный эффект для тех, кто хочет заметную трансформацию.</p>
+      </div>
+    </div>
+    <p class="ba-note reveal" style="margin-top:20px">Доступные варианты являются визуальными стилями. Реальный план лечения определяет врач.</p>
+  </div>
+</section>
+
+<!-- ================= 6. BEFORE / AFTER ================= -->
+<section id="before-after">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">До / после</div>
+      <h2 class="display">Сравнение, которое можно почувствовать</h2>
+      <p class="sub">В приложении результат показывается слайдером «до/после» — двигайте разделитель, чтобы увидеть разницу. Ниже — интерактивная иллюстрация интерфейса.</p>
+    </div>
+    <div class="ba-demo reveal" id="ba" role="img" aria-label="Слайдер до и после: слева портрет с естественной улыбкой, справа — тот же портрет с AI-визуализацией ровных белых зубов">
+      <div class="layer before">
+        <img loading="lazy" width="2016" height="1344"
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_3EKntK4EDjG8nay4H1dy1TK30mB/hf_20260706_151313_5644ef24-b83a-4088-ab2c-d27ca08b08ea_min.webp"
+          alt="">
+      </div>
+      <div class="layer after">
+        <img loading="lazy" width="1264" height="848"
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_3EKntK4EDjG8nay4H1dy1TK30mB/hf_20260706_151523_13e0f2a3-5824-43b6-8029-9cda12ad3a05_min.webp"
+          alt="">
+      </div>
+      <span class="lbl b">До</span><span class="lbl a">После</span>
+      <div class="divider"></div>
+      <div class="handle">⇄</div>
+    </div>
+    <p class="ba-note reveal">Портрет и «после» созданы AI (изменены только зубы) — демонстрация того, как выглядит визуализация в приложении. Не клинический результат: итог реального лечения может отличаться.</p>
+  </div>
+</section>
+
+<!-- ================= 6b. STORY: WHOLE FACE CHANGES ================= -->
+<section class="band tight" id="story">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">История</div>
+      <h2 class="display">Меняются не только зубы — меняется всё лицо</h2>
+      <p class="sub">Когда человек впервые видит себя с другой улыбкой, меняется выражение лица, осанка и уверенность. Именно этот момент Smile делает возможным ещё до консультации.</p>
+    </div>
+    <div class="demo-shell solo reveal">
+      <video controls muted loop playsinline preload="metadata" data-autoplay
+        aria-label="Ролик: мужчина около сорока лет видит AI-визуализацию своей улыбки на телефоне, и его лицо преображается">
+        <source src="https://d8j0ntlcm91z4.cloudfront.net/user_3EKntK4EDjG8nay4H1dy1TK30mB/hf_20260706_151913_43ec8e68-8b46-4843-be25-4b19e3bcd21f.mp4" type="video/mp4">
+      </video>
+    </div>
+    <p class="media-note reveal">Ролик создан с помощью AI. Финальный кадр — «представление себя» с новой улыбкой на основе визуализации, а не результат лечения.</p>
+  </div>
+</section>
+
+<!-- ================= 7. FOR PATIENTS ================= -->
+<section class="band" id="patients">
+  <div class="wrap split-2">
+    <div class="reveal">
+      <div class="kicker">Пациентам</div>
+      <h2 class="display">Для тех, кто хочет понять, с чего начать</h2>
+      <p class="sub">Smile помогает увидеть возможное направление, сравнить варианты и обратиться в клинику уже с понятным запросом.</p>
+      <ul class="ticks">
+        <li><span class="tick">✓</span> Не нужно сразу разбираться в терминах</li>
+        <li><span class="tick">✓</span> Можно сравнить стили до записи</li>
+        <li><span class="tick">✓</span> Заявка отправляется только после вашего согласия</li>
+        <li><span class="tick">✓</span> Точная стоимость определяется после консультации</li>
+      </ul>
+      <div class="cta-row" style="margin-top:28px">
+        <a class="btn btn-primary" href="#early-access">Получить ранний доступ</a>
+      </div>
+    </div>
+    <div class="reveal">
+      <div class="photo-card">
+        <img loading="lazy" width="2016" height="1344"
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_3EKntK4EDjG8nay4H1dy1TK30mB/hf_20260706_150345_aba9592f-af2e-4c0d-89fd-e02d26216721_min.webp"
+          alt="Девушка у окна смотрит на экран телефона с мягкой улыбкой — атмосфера использования приложения">
+      </div>
+      <div class="card" style="padding:28px">
+        <h3 style="font-size:19px">Что вы получаете в beta</h3>
+        <ul class="ticks" style="margin-top:14px">
+          <li><span class="tick">→</span> Ранний доступ к приложению</li>
+          <li><span class="tick">→</span> Тестирование визуализаций</li>
+          <li><span class="tick">→</span> Уведомление о запуске</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 8. FOR CLINICS ================= -->
+<section id="clinics">
+  <div class="wrap split-2">
+    <div class="reveal">
+      <div class="kicker">Клиникам</div>
+      <h2 class="display">Лид с визуальным намерением, а не просто номер телефона</h2>
+      <p class="sub">Клиника получает заявку от человека, который уже увидел возможный результат, выбрал направление улыбки и готов обсудить консультацию.</p>
+      <ul class="ticks">
+        <li><span class="tick">✓</span> 1 лид = 1 клиника</li>
+        <li><span class="tick">✓</span> В заявке есть выбранный стиль</li>
+        <li><span class="tick">✓</span> Визуализация помогает начать разговор</li>
+        <li><span class="tick">✓</span> Оплата за лид возможна только в B2B-модели после подключения</li>
+      </ul>
+      <div class="cta-row" style="margin-top:28px">
+        <a class="btn btn-primary" href="#clinic-form">Стать клиникой-партнёром</a>
+      </div>
+    </div>
+    <div class="reveal">
+      <div class="card" style="padding:28px">
+        <h3 style="font-size:19px">Пилот для клиник</h3>
+        <ul class="ticks" style="margin-top:14px">
+          <li><span class="tick">→</span> Пилот для 2–3 клиник</li>
+          <li><span class="tick">→</span> Лиды с выбранным стилем улыбки</li>
+          <li><span class="tick">→</span> Модель оплаты за квалифицированный лид</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 9. TRUST ================= -->
+<section class="band" id="trust">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Доверие и ограничения</div>
+      <h2 class="display">Честная визуализация без медицинских обещаний</h2>
+    </div>
+    <div class="cards c3">
+      <div class="card reveal">
+        <h3>Не диагноз</h3>
+        <p>Smile не определяет заболевания и не заменяет врача.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Не план лечения</h3>
+        <p>Реальный план зависит от осмотра, снимков и консультации.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Только после согласия</h3>
+        <p>Фото используется для визуализации. Заявка в клинику отправляется только после действия пользователя.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Без прямого доступа к AI API</h3>
+        <p>Генерация проходит через защищённый сервер — так защищены ключи, лимиты и стоимость.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Контроль пользователя</h3>
+        <p>Пользователь сам выбирает стиль и клинику.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Ограничения результата</h3>
+        <p>AI-изображение может отличаться от реального клинического результата.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 10. ACCESS / PILOT ================= -->
+<section class="tight" id="access">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Доступ</div>
+      <h2 class="display">Запуск через ранний доступ и клиники-партнёры</h2>
+      <p class="sub">Smile готовится к beta-запуску. Пользователи могут оставить заявку на ранний доступ, а клиники — подключиться к пилоту.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 11. FAQ ================= -->
+<section class="tight" id="faq" style="padding-top:0">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Вопросы</div>
+      <h2 class="display">FAQ</h2>
+    </div>
+    <div class="reveal">
+      <details class="faq">
+        <summary>Это медицинский диагноз?</summary>
+        <p>Нет. Smile создаёт AI-визуализацию возможного эстетического результата. Диагноз и план лечения определяет врач.</p>
+      </details>
+      <details class="faq">
+        <summary>Можно ли узнать точную стоимость?</summary>
+        <p>Нет, не только по селфи. Smile может показать ориентир, но точная стоимость зависит от консультации, диагностики и клиники.</p>
+      </details>
+      <details class="faq">
+        <summary>Клиника сразу получит моё фото?</summary>
+        <p>Нет. Заявка отправляется только после вашего действия.</p>
+      </details>
+      <details class="faq">
+        <summary>Что если фото плохое?</summary>
+        <p>Приложение подскажет, что исправить: свет, положение лица или видимость улыбки.</p>
+      </details>
+      <details class="faq">
+        <summary>Для клиник это маркетплейс?</summary>
+        <p>Нет. Сейчас продукт сфокусирован на квалифицированных заявках для выбранной клиники.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 12. FINAL CTA + FORMS ================= -->
+<section class="band" id="early-access">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Начать</div>
+      <h2 class="display">Начните с улыбки, которую можно увидеть</h2>
+      <p class="sub">Сделайте первый шаг до консультации: получите AI-визуализацию и решите, какой результат хотите обсудить с клиникой.</p>
+    </div>
+
+    <div class="form-grid">
+      <!-- B2C: early access -->
+      <form class="lead reveal" id="form-user" novalidate>
+        <h3 class="display">Ранний доступ</h3>
+        <p class="fh">Пришлём ссылку в день запуска. Никакого спама.</p>
+        <div class="field">
+          <label for="u-name">Имя</label>
+          <input id="u-name" name="name" type="text" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="u-contact">Телефон или email</label>
+          <input id="u-contact" name="contact" type="text" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="u-city">Город</label>
+          <input id="u-city" name="city" type="text" autocomplete="address-level2">
+        </div>
+        <div class="field">
+          <label>Интерес</label>
+          <div class="radio-row">
+            <label><input type="radio" name="interest" value="app" checked> Я хочу попробовать приложение</label>
+            <label><input type="radio" name="interest" value="clinic"> Я представляю клинику</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="u-comment">Комментарий (необязательно)</label>
+          <textarea id="u-comment" name="comment"></textarea>
+        </div>
+        <label class="consent">
+          <input type="checkbox" name="consent" required>
+          <span>Согласен(на) на обработку данных для связи по заявке.</span>
+        </label>
+        <button class="btn btn-primary" type="submit">Получить ранний доступ</button>
+        <div class="form-msg" role="status" aria-live="polite"></div>
+      </form>
+
+      <!-- B2B: clinic partnership -->
+      <form class="lead reveal" id="form-clinic" novalidate>
+        <h3 class="display" id="clinic-form">Стать клиникой-партнёром</h3>
+        <p class="fh">Пилот для 2–3 клиник: лиды с выбранным стилем улыбки, оплата за квалифицированный лид.</p>
+        <div class="field">
+          <label for="c-name">Название клиники</label>
+          <input id="c-name" name="clinic_name" type="text" required>
+        </div>
+        <div class="field">
+          <label for="c-city">Город</label>
+          <input id="c-city" name="city" type="text">
+        </div>
+        <div class="field">
+          <label for="c-person">Контактное лицо и роль</label>
+          <input id="c-person" name="contact_person" type="text" placeholder="Имя, должность">
+        </div>
+        <div class="field">
+          <label for="c-phone">Телефон</label>
+          <input id="c-phone" name="phone" type="tel" autocomplete="tel" required>
+        </div>
+        <div class="field">
+          <label for="c-email">Email</label>
+          <input id="c-email" name="email" type="email" autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="c-flow">Средний поток заявок сейчас (необязательно)</label>
+          <input id="c-flow" name="flow" type="text" placeholder="например, 30 заявок в месяц">
+        </div>
+        <div class="field">
+          <label for="c-interest">Интерес</label>
+          <select id="c-interest" name="interest">
+            <option value="pilot">Пилот</option>
+            <option value="leads">Лиды</option>
+            <option value="partnership">Партнёрство</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="c-msg">Сообщение</label>
+          <textarea id="c-msg" name="message"></textarea>
+        </div>
+        <label class="consent">
+          <input type="checkbox" name="consent" required>
+          <span>Согласен(на) на обработку данных для связи по заявке.</span>
+        </label>
+        <button class="btn btn-ghost" type="submit">Отправить заявку клиники</button>
+        <div class="form-msg" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+
+    <p class="trust-line reveal" style="margin-top:26px">AI-визуализация не заменяет стоматолога и не гарантирует клинический результат.</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap cols">
+    <div class="disc">
+      <strong style="color:var(--ink-2)">Важно:</strong> Smile создаёт AI-визуализацию возможного эстетического результата по селфи.
+      Это не диагноз, не план лечения и не гарантия результата — итог зависит от консультации,
+      диагностики и плана лечения у врача.
+      <br><br>
+      Фото обрабатываются с вашего согласия и используются только для создания визуализации.
+      Заявка в клинику отправляется только после вашего действия.
+      <br><br>
+      Политика конфиденциальности и пользовательское соглашение — в подготовке к beta-запуску.
+    </div>
+    <div>
+      <div class="logo">Smile<i>.</i></div>
+      <p>Продукт в стадии beta<br>© 2026</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ---------- config: form storage ----------
+  // Supabase REST endpoint for the landing forms. Left EMPTY on purpose:
+  // wiring requires applying migration 0008 (waitlist + clinic_applications)
+  // and pasting the project's PUBLIC anon key here. Until then, forms fall
+  // back to a prefilled email draft — honest, no fake "sent" state.
+  var SUPABASE_URL = "";      // e.g. "https://xxxx.supabase.co"
+  var SUPABASE_ANON_KEY = ""; // public anon key (safe to embed)
+  var FALLBACK_EMAIL = "parkourcafe@gmail.com";
+
+  // ---------- video: respectful autoplay + graceful fallback ----------
+  (function () {
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelectorAll('video[data-autoplay]').forEach(function (v) {
+      // If the media host is unreachable (e.g. strict-CSP preview), hide the
+      // hero media layer so the CSS gradient scene remains; the demo player
+      // keeps its frame with a note.
+      v.addEventListener('error', hide, true);
+      var src = v.querySelector('source');
+      if (src) src.addEventListener('error', hide, true);
+      function hide() {
+        var wrap = v.closest('.hero-media');
+        if (wrap) wrap.style.display = 'none';
+      }
+      if (!reduced) {
+        var p = v.play();
+        if (p && p.catch) p.catch(function () { /* autoplay blocked — poster stays */ });
+      }
+    });
+  })();
+
+  // ---------- mobile nav ----------
+  (function () {
+    var b = document.getElementById('burger'), m = document.getElementById('mnav');
+    b.addEventListener('click', function () {
+      var open = m.classList.toggle('open');
+      b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    m.addEventListener('click', function (e) {
+      if (e.target.tagName === 'A') { m.classList.remove('open'); b.setAttribute('aria-expanded', 'false'); }
+    });
+  })();
+
+  // ---------- before/after demo ----------
+  (function () {
+    var frame = document.getElementById('ba');
+    if (!frame) return;
+    var dragging = false;
+    function setX(clientX) {
+      var r = frame.getBoundingClientRect();
+      var pct = Math.min(96, Math.max(4, ((clientX - r.left) / r.width) * 100));
+      frame.style.setProperty('--x', pct + '%');
+    }
+    frame.addEventListener('pointerdown', function (e) { dragging = true; frame.setPointerCapture(e.pointerId); setX(e.clientX); });
+    frame.addEventListener('pointermove', function (e) { if (dragging) setX(e.clientX); });
+    frame.addEventListener('pointerup', function () { dragging = false; });
+    frame.addEventListener('pointercancel', function () { dragging = false; });
+  })();
+
+  // ---------- scroll reveal ----------
+  (function () {
+    var els = document.querySelectorAll('.reveal');
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.1 });
+    els.forEach(function (el) { io.observe(el); });
+  })();
+
+  // ---------- forms ----------
+  (function () {
+    function fields(form) {
+      var d = {};
+      new FormData(form).forEach(function (v, k) { d[k] = String(v).trim(); });
+      return d;
+    }
+    function msg(form, text, ok) {
+      var el = form.querySelector('.form-msg');
+      el.textContent = text;
+      el.className = 'form-msg ' + (ok ? 'ok' : 'err');
+    }
+    async function submitTo(table, payload) {
+      var resp = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(payload)
+      });
+      return resp;
+    }
+    function mailtoFallback(subject, data) {
+      var body = Object.keys(data).map(function (k) { return k + ': ' + data[k]; }).join('\n');
+      window.location.href = 'mailto:' + FALLBACK_EMAIL +
+        '?subject=' + encodeURIComponent(subject) +
+        '&body=' + encodeURIComponent(body);
+    }
+
+    var fu = document.getElementById('form-user');
+    fu.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (!fu.reportValidity()) return;
+      var d = fields(fu);
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        try {
+          var r = await submitTo('waitlist', { contact: d.contact, city: d.city || null, source: 'hero:' + (d.interest || 'app') });
+          if (r.ok) { msg(fu, 'Готово! Вы в списке раннего доступа.', true); fu.reset(); return; }
+          if (r.status === 409) { msg(fu, 'Вы уже в списке — мы напишем в день запуска.', true); return; }
+          msg(fu, 'Не получилось отправить. Попробуйте ещё раз или напишите нам: ' + FALLBACK_EMAIL, false);
+        } catch (err) {
+          msg(fu, 'Нет связи с сервером. Открываем письмо…', false);
+          mailtoFallback('Smile — ранний доступ', d);
+        }
+      } else {
+        msg(fu, 'Открываем письмо с вашей заявкой…', true);
+        mailtoFallback('Smile — ранний доступ', d);
+      }
+    });
+
+    var fc = document.getElementById('form-clinic');
+    fc.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (!fc.reportValidity()) return;
+      var d = fields(fc);
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        try {
+          var r = await submitTo('clinic_applications', {
+            clinic_name: d.clinic_name, city: d.city || null, phone: d.phone,
+            contact_person: (d.contact_person || '') + (d.email ? ' · ' + d.email : '') +
+                            (d.flow ? ' · поток: ' + d.flow : '') +
+                            (d.interest ? ' · интерес: ' + d.interest : '') +
+                            (d.message ? ' · ' + d.message : '')
+          });
+          if (r.ok) { msg(fc, 'Заявка отправлена. Свяжемся с вами по пилоту.', true); fc.reset(); return; }
+          msg(fc, 'Не получилось отправить. Напишите нам: ' + FALLBACK_EMAIL, false);
+        } catch (err) {
+          msg(fc, 'Нет связи с сервером. Открываем письмо…', false);
+          mailtoFallback('Smile — заявка клиники', d);
+        }
+      } else {
+        msg(fc, 'Открываем письмо с вашей заявкой…', true);
+        mailtoFallback('Smile — заявка клиники', d);
+      }
+    });
+  })();
+</script>
