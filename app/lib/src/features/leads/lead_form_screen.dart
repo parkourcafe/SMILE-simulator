@@ -38,7 +38,7 @@ class _LeadFormScreenState extends State<LeadFormScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _time,
+              initialValue: _time,
               decoration: const InputDecoration(labelText: 'Preferred time'),
               items: const [
                 DropdownMenuItem(value: 'morning', child: Text('Morning')),

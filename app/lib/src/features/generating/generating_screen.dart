@@ -112,7 +112,7 @@ class _SocialProof extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.08),
+        color: theme.colorScheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -122,7 +122,7 @@ class _SocialProof extends StatelessWidget {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              'Более 12 000 улыбок уже создано',
+              'AI подбирает форму под ваше лицо',
               style: theme.textTheme.bodySmall,
             ),
           ),

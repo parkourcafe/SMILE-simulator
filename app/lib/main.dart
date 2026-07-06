@@ -12,6 +12,8 @@ Future<void> main() async {
   if (Env.isConfigured) {
     await Supabase.initialize(
       url: Env.supabaseUrl,
+      // Legacy anon key until the publishable-keys migration.
+      // ignore: deprecated_member_use
       anonKey: Env.supabaseAnonKey,
     );
   }
