@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smile — визуальный ориентир улыбки до визита в клинику</title>
+<meta name="description" content="Загрузите селфи, выберите стиль улыбки и получите AI-визуализацию «до/после». Понравится — отправите понятный визуальный запрос в клинику. Не диагноз, не план лечения.">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Smile">
+<meta property="og:title" content="Smile — визуальный ориентир улыбки до визита в клинику">
+<meta property="og:description" content="Селфи → выбор стиля → AI-визуализация «до/после» → понятный запрос в клинику. Визуальный ориентир, а не медицинское обещание.">
+<meta property="og:image" content="og-preview.png">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Smile — визуальный ориентир улыбки до визита в клинику">
+<meta name="twitter:description" content="Селфи → стиль → AI-визуализация «до/после» → понятный запрос в клинику.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,400;0,500;0,600;1,400&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Schema.org: строго без медицинских claims -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Smile",
+  "applicationCategory": "LifestyleApplication",
+  "operatingSystem": "Web",
+  "description": "AI-визуализация возможного эстетического направления улыбки до консультации в клинике. Визуальный ориентир, не медицинская диагностика.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "RUB" }
+}
+</script>
+
+<style>
+:root{
+  --ink:#0B0F10;
+  --ink-2:#12181A;
+  --paper:#F4EFE7;
+  --paper-dim:#B9B3A8;
+  --muted:#8A857B;
+  --line:rgba(244,239,231,.12);
+  --accent:#78D3C2;
+  --accent-deep:#3E9C8C;
+  --warm:#E7C9A3;
+  --maxw:1160px;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--ink);
+  color:var(--paper);
+  font-family:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-weight:400;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+h1,h2,h3,.serif{font-family:'Cormorant',Georgia,serif;font-weight:500;line-height:1.06;letter-spacing:-.01em}
+::selection{background:var(--accent);color:var(--ink)}
+a{color:inherit;text-decoration:none}
+img,svg{display:block;max-width:100%}
+
+/* ---------- Layout ---------- */
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+section{position:relative;padding:120px 0}
+.eyebrow{
+  font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--accent);font-weight:600;margin-bottom:22px;display:inline-flex;gap:10px;align-items:center;
+}
+.eyebrow::before{content:"";width:26px;height:1px;background:var(--accent);opacity:.6}
+.lead{color:var(--paper-dim);font-size:clamp(16px,1.6vw,18.5px);max-width:60ch;font-weight:400}
+.center{text-align:center}
+.center .eyebrow::before{display:none}
+.center .lead{margin-left:auto;margin-right:auto}
+
+/* ---------- Grain + cursor halo ---------- */
+.grain{position:fixed;inset:0;pointer-events:none;z-index:9;opacity:.05;mix-blend-mode:overlay}
+.halo{
+  position:fixed;top:0;left:0;width:520px;height:520px;border-radius:50%;
+  background:radial-gradient(circle,rgba(120,211,194,.16),transparent 62%);
+  transform:translate(-50%,-50%);pointer-events:none;z-index:2;
+  transition:opacity .6s;filter:blur(6px);
+}
+
+/* ---------- Nav ---------- */
+header.nav{
+  position:fixed;top:0;left:0;right:0;z-index:50;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 28px;transition:background .4s,backdrop-filter .4s,padding .4s,border-color .4s;
+  border-bottom:1px solid transparent;
+}
+header.nav.scrolled{background:rgba(11,15,16,.72);backdrop-filter:blur(14px);border-bottom-color:var(--line);padding:14px 28px}
+.brand{font-family:'Cormorant',serif;font-size:26px;font-weight:600;letter-spacing:.02em;display:flex;align-items:center;gap:9px}
+.brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent)}
+.nav-links{display:flex;gap:30px;align-items:center}
+.nav-links a{font-size:14px;color:var(--paper-dim);transition:color .3s;position:relative}
+.nav-links a::after{content:"";position:absolute;left:0;bottom:-5px;width:0;height:1px;background:var(--accent);transition:width .35s var(--ease)}
+.nav-links a:hover{color:var(--paper)}
+.nav-links a:hover::after{width:100%}
+.nav-cta{border:1px solid var(--line);padding:9px 18px;border-radius:100px;color:var(--paper)!important;font-weight:500;transition:.35s var(--ease)}
+.nav-cta:hover{background:var(--accent);color:var(--ink)!important;border-color:var(--accent)}
+.burger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:6px;z-index:60}
+.burger span{width:24px;height:2px;background:var(--paper);transition:.3s}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;gap:9px;justify-content:center;
+  padding:15px 26px;border-radius:100px;font-weight:600;font-size:15px;cursor:pointer;
+  border:1px solid transparent;transition:.4s var(--ease);font-family:'Manrope',sans-serif;
+}
+.btn-primary{background:var(--accent);color:var(--ink)}
+.btn-primary:hover{background:var(--paper);transform:translateY(-2px)}
+.btn-ghost{border-color:var(--line);color:var(--paper);background:transparent}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-tg{background:transparent;border-color:var(--accent);color:var(--accent)}
+.btn-tg:hover{background:var(--accent);color:var(--ink)}
+.btn .arw{transition:transform .35s var(--ease)}
+.btn:hover .arw{transform:translateX(4px)}
+
+/* ---------- Hero ---------- */
+.hero{min-height:100vh;display:flex;align-items:center;padding-top:120px;overflow:hidden}
+.hero-bg{position:absolute;inset:0;z-index:0;
+  background:
+   radial-gradient(1100px 640px at 72% 18%,rgba(62,156,140,.22),transparent 60%),
+   radial-gradient(760px 520px at 12% 88%,rgba(231,201,163,.10),transparent 62%);
+}
+.hero-grid{position:absolute;inset:0;z-index:0;opacity:.4;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(circle at 50% 40%,#000,transparent 78%);
+}
+.hero .wrap{position:relative;z-index:3}
+.hero h1{font-size:clamp(44px,7vw,92px);max-width:16ch;margin:24px 0 0}
+.hero h1 em{font-style:italic;color:var(--warm)}
+.hero .sub{margin-top:30px;max-width:56ch;color:var(--paper-dim);font-size:clamp(16px,1.7vw,19px)}
+.hero .cta-row{display:flex;gap:14px;margin-top:40px;flex-wrap:wrap}
+.hero .notes{margin-top:34px;display:flex;flex-direction:column;gap:8px}
+.hero .disclaim{font-size:13.5px;color:var(--muted);max-width:52ch}
+.hero .disclaim b{color:var(--paper-dim);font-weight:600}
+.badge{display:inline-flex;align-items:center;gap:10px;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--paper-dim);border:1px solid var(--line);padding:8px 15px;border-radius:100px}
+.badge .pulse{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(120,211,194,.6);animation:pulse 2.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(120,211,194,.55)}70%{box-shadow:0 0 0 9px rgba(120,211,194,0)}100%{box-shadow:0 0 0 0 rgba(120,211,194,0)}}
+
+/* ---------- Reveal ---------- */
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .9s var(--ease),transform .9s var(--ease)}
+.reveal.in{opacity:1;transform:none}
+.reveal.d1{transition-delay:.08s}.reveal.d2{transition-delay:.16s}.reveal.d3{transition-delay:.24s}.reveal.d4{transition-delay:.32s}
+
+/* ---------- Section heads ---------- */
+.sec-head h2{font-size:clamp(32px,4.6vw,58px);max-width:20ch}
+.sec-head{margin-bottom:56px}
+.center.sec-head{margin-left:auto;margin-right:auto}
+
+/* ---------- Steps / cards ---------- */
+.grid{display:grid;gap:20px}
+.g5{grid-template-columns:repeat(5,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:1fr 1fr}
+.card{
+  background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012));
+  border:1px solid var(--line);border-radius:18px;padding:26px;
+  transition:.5s var(--ease);position:relative;overflow:hidden;
+}
+.card:hover{border-color:rgba(120,211,194,.4);transform:translateY(-4px)}
+.card .num{font-family:'Cormorant',serif;font-size:40px;color:var(--accent);line-height:1;margin-bottom:14px;font-weight:500}
+.card h3{font-size:24px;margin-bottom:8px}
+.card p{font-size:15px;color:var(--paper-dim)}
+.card .micro{margin-top:14px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+
+/* ---------- Demo strip ---------- */
+.demo-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:10px}
+.demo-screen{border:1px solid var(--line);border-radius:16px;background:var(--ink-2);aspect-ratio:9/16;padding:16px;display:flex;flex-direction:column;justify-content:space-between;transition:.5s var(--ease);position:relative}
+.demo-screen:hover{border-color:var(--accent);transform:translateY(-5px)}
+.demo-screen .tag{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.demo-screen .st-num{font-family:'Cormorant',serif;font-size:34px;color:var(--accent)}
+.demo-screen .st-t{font-size:15px;font-weight:600;color:var(--paper)}
+.demo-screen .glyph{flex:1;display:flex;align-items:center;justify-content:center}
+
+/* ---------- Problem two-col ---------- */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.cmp .col{border:1px solid var(--line);border-radius:18px;padding:28px}
+.cmp .now{background:rgba(255,255,255,.015)}
+.cmp .with{background:linear-gradient(180deg,rgba(120,211,194,.10),rgba(120,211,194,.02));border-color:rgba(120,211,194,.28)}
+.cmp h4{font-family:'Manrope';font-size:13px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:18px;color:var(--paper-dim)}
+.cmp .with h4{color:var(--accent)}
+.cmp ul{list-style:none;display:flex;flex-direction:column;gap:13px}
+.cmp li{font-size:15.5px;color:var(--paper-dim);display:flex;gap:11px;align-items:flex-start}
+.cmp li .mk{color:var(--muted);flex-shrink:0}
+.cmp .with li .mk{color:var(--accent)}
+.cmp .with li{color:var(--paper)}
+
+/* ---------- Before/After ---------- */
+.ba-wrap{max-width:760px;margin:0 auto}
+.ba{position:relative;border-radius:20px;overflow:hidden;border:1px solid var(--line);aspect-ratio:4/3;user-select:none;touch-action:none;cursor:ew-resize;background:var(--ink-2)}
+.ba .layer{position:absolute;inset:0}
+.ba .after{clip-path:inset(0 0 0 50%)}
+.ba .lbl{position:absolute;bottom:14px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--paper);background:rgba(11,15,16,.6);padding:6px 12px;border-radius:100px;backdrop-filter:blur(6px)}
+.ba .lbl.l{left:14px}.ba .lbl.r{right:14px;color:var(--accent)}
+.ba .handle{position:absolute;top:0;bottom:0;left:50%;width:2px;background:var(--paper);transform:translateX(-50%);z-index:4}
+.ba .knob{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;background:var(--paper);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,.4);z-index:5}
+.ba-note{text-align:center;font-size:13px;color:var(--muted);margin-top:16px;max-width:60ch;margin-left:auto;margin-right:auto}
+.trust-mini{margin-top:26px;border:1px solid var(--line);border-radius:16px;padding:22px;background:rgba(255,255,255,.015)}
+.trust-mini h4{font-family:'Manrope';font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--paper-dim);margin-bottom:14px}
+.trust-mini ul{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.trust-mini li{font-size:14px;color:var(--paper-dim);display:flex;gap:9px}
+.trust-mini li .mk{color:var(--accent)}
+
+/* ---------- Styles cards ---------- */
+.style-card .swatch{height:74px;border-radius:12px;margin-bottom:16px;border:1px solid var(--line)}
+
+/* ---------- Clinic comparison ---------- */
+.clinic-cmp{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:34px 0}
+.clinic-cmp .box{border:1px solid var(--line);border-radius:16px;padding:24px}
+.clinic-cmp .plain{background:rgba(255,255,255,.015)}
+.clinic-cmp .smart{background:linear-gradient(180deg,rgba(120,211,194,.10),transparent);border-color:rgba(120,211,194,.3)}
+.clinic-cmp .box .t{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.clinic-cmp .smart .t{color:var(--accent)}
+.clinic-cmp ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+.clinic-cmp li{font-size:15px;color:var(--paper-dim);display:flex;gap:10px}
+.clinic-cmp .smart li{color:var(--paper)}
+.two-panel{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
+
+/* ---------- Trust grid ---------- */
+.trust-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.trust-cell{border:1px solid var(--line);border-radius:16px;padding:24px;background:rgba(255,255,255,.015);transition:.5s var(--ease)}
+.trust-cell:hover{border-color:rgba(120,211,194,.35)}
+.trust-cell .ic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:rgba(120,211,194,.12);color:var(--accent);margin-bottom:14px}
+.trust-cell h3{font-size:21px;margin-bottom:7px}
+.trust-cell p{font-size:14px;color:var(--paper-dim)}
+
+/* ---------- Forms ---------- */
+.forms{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.form-card{border:1px solid var(--line);border-radius:20px;padding:34px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.008))}
+.form-card.clinic{background:linear-gradient(180deg,rgba(231,201,163,.06),rgba(255,255,255,.008))}
+.form-card h3{font-size:28px;margin-bottom:6px}
+.form-card .fsub{font-size:14px;color:var(--paper-dim);margin-bottom:22px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12.5px;color:var(--paper-dim);margin-bottom:6px}
+.field input,.field select,.field textarea{
+  width:100%;background:rgba(11,15,16,.55);border:1px solid var(--line);border-radius:11px;
+  padding:12px 14px;color:var(--paper);font-family:'Manrope';font-size:15px;transition:.3s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);background:rgba(11,15,16,.8)}
+.field textarea{resize:vertical;min-height:64px}
+.field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238A857B' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.consent{display:flex;gap:10px;align-items:flex-start;margin:6px 0 18px;font-size:12.5px;color:var(--muted);line-height:1.5}
+.consent input{margin-top:3px;accent-color:var(--accent);flex-shrink:0}
+.consent a{color:var(--paper-dim);text-decoration:underline;text-underline-offset:2px}
+.form-card .btn{width:100%}
+.form-alt{margin-top:14px;text-align:center;font-size:13px;color:var(--muted)}
+.thanks{display:none;text-align:center;padding:30px 10px}
+.thanks.show{display:block;animation:fade .6s var(--ease)}
+.thanks .ok{width:56px;height:56px;border-radius:50%;background:rgba(120,211,194,.14);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:26px}
+.thanks h4{font-family:'Cormorant';font-size:28px;margin-bottom:10px}
+.thanks p{font-size:15px;color:var(--paper-dim);max-width:36ch;margin:0 auto}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
+.form-hidden{display:none!important}
+
+/* ---------- FAQ ---------- */
+.faq{max-width:820px;margin:0 auto}
+.faq-item{border-bottom:1px solid var(--line)}
+.faq-q{width:100%;text-align:left;background:none;border:none;color:var(--paper);font-family:'Manrope';font-size:18px;font-weight:500;padding:24px 0;cursor:pointer;display:flex;justify-content:space-between;gap:20px;align-items:center}
+.faq-q .pm{color:var(--accent);font-size:22px;transition:transform .4s var(--ease);flex-shrink:0}
+.faq-item.open .pm{transform:rotate(45deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .5s var(--ease)}
+.faq-a p{padding:0 0 24px;color:var(--paper-dim);font-size:15.5px;max-width:64ch}
+
+/* ---------- Final ---------- */
+.final{text-align:center;background:
+  radial-gradient(700px 400px at 50% 0%,rgba(62,156,140,.18),transparent 60%);border-top:1px solid var(--line)}
+.final h2{font-size:clamp(38px,6vw,74px);max-width:16ch;margin:0 auto 22px}
+.final .cta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:34px}
+
+/* ---------- Footer ---------- */
+footer{border-top:1px solid var(--line);padding:44px 0;color:var(--muted);font-size:13px}
+footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center}
+footer a{color:var(--paper-dim)}
+footer .legal{max-width:60ch;line-height:1.6}
+
+/* ---------- Mobile ---------- */
+@media(max-width:900px){
+  section{padding:82px 0}
+  .nav-links{
+    position:fixed;inset:0;background:rgba(11,15,16,.97);backdrop-filter:blur(20px);
+    flex-direction:column;justify-content:center;gap:26px;font-size:22px;
+    transform:translateX(100%);transition:transform .45s var(--ease);
+  }
+  .nav-links.open{transform:none}
+  .nav-links a{color:var(--paper);font-family:'Cormorant';font-size:30px}
+  .burger{display:flex}
+  .g5,.g4,.g3,.g2,.demo-strip,.cmp,.clinic-cmp,.trust-grid,.forms,.two-panel{grid-template-columns:1fr}
+  .demo-strip{grid-template-columns:1fr 1fr}
+  .trust-mini ul{grid-template-columns:1fr}
+  .hero h1{font-size:clamp(38px,11vw,60px)}
+  .hero .cta-row .btn{flex:1;min-width:150px}
+  .two-panel{gap:32px}
+  .halo{display:none}
+}
+@media(max-width:520px){
+  .wrap{padding:0 20px}
+  .demo-strip{grid-template-columns:1fr}
+  .form-card{padding:26px 22px}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  .reveal{opacity:1;transform:none}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<div class="halo" id="halo"></div>
+<svg class="grain"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>
+
+<!-- NAV -->
+<header class="nav" id="nav">
+  <a href="#top" class="brand"><span class="dot"></span>Smile</a>
+  <nav class="nav-links" id="navLinks">
+    <a href="#how">Как работает</a>
+    <a href="#styles">Стили</a>
+    <a href="#clinics">Клиникам</a>
+    <a href="#trust">Доверие</a>
+    <a href="#access" class="nav-cta">Ранний доступ</a>
+  </nav>
+  <div class="burger" id="burger"><span></span><span></span><span></span></div>
+</header>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="wrap">
+    <span class="badge reveal"><span class="pulse"></span>AI-визуализация улыбки · Beta</span>
+    <h1 class="reveal d1">Увидьте, как может выглядеть <em>ваша улыбка</em>, до визита в клинику</h1>
+    <p class="sub reveal d2">Загрузите селфи, выберите стиль улыбки и получите AI-визуализацию «до/после». Если результат вам подходит, отправьте понятный визуальный запрос — мы передадим его в клинику для консультации и точной оценки.</p>
+    <div class="cta-row reveal d3">
+      <a href="#access" class="btn btn-primary" data-goal="cta_hero_patient">Получить ранний доступ <span class="arw">→</span></a>
+      <a href="#demo" class="btn btn-ghost">Посмотреть, как это устроено</a>
+      <a href="#clinics" class="btn btn-ghost">Я представляю клинику</a>
+    </div>
+    <div class="notes reveal d4">
+      <p class="disclaim"><b>Не диагноз. Не план лечения. Не гарантия результата.</b> Smile помогает начать разговор с врачом с понятного визуального ориентира.</p>
+      <p class="disclaim">Заявка передаётся в клинику только после вашего действия и согласия на обработку персональных данных.</p>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO -->
+<section id="demo">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Демо</span>
+      <h2>От селфи до понятного запроса — за пять шагов</h2>
+      <p class="lead" style="margin-top:18px">Smile показывает путь от первого селфи до визуального запроса, который можно отправить в клинику для консультации.</p>
+    </div>
+    <div class="demo-strip">
+      <div class="demo-screen reveal"><span class="tag">Шаг 01</span><div class="glyph"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#78D3C2" stroke-width="1.3"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.4"/><path d="M8 6l1.4-2h5.2L16 6"/></svg></div><div><div class="st-num">01</div><div class="st-t">Проверка селфи</div></div></div>
+      <div class="demo-screen reveal d1"><span class="tag">Шаг 02</span><div class="glyph"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#78D3C2" stroke-width="1.3"><path d="M4 12h4M16 12h4"/><circle cx="12" cy="12" r="4.4"/><path d="M12 3v3M12 18v3"/></svg></div><div><div class="st-num">02</div><div class="st-t">Выбор стиля</div></div></div>
+      <div class="demo-screen reveal d2"><span class="tag">Шаг 03</span><div class="glyph"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#78D3C2" stroke-width="1.3"><path d="M12 3l2.1 4.6L19 9l-3.6 3.3L16.4 18 12 15.3 7.6 18l1-5.7L5 9l4.9-1.4z"/></svg></div><div><div class="st-num">03</div><div class="st-t">AI-визуализация</div></div></div>
+      <div class="demo-screen reveal d3"><span class="tag">Шаг 04</span><div class="glyph"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#78D3C2" stroke-width="1.3"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/></svg></div><div><div class="st-num">04</div><div class="st-t">Сравнение до/после</div></div></div>
+      <div class="demo-screen reveal d4"><span class="tag">Шаг 05</span><div class="glyph"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#78D3C2" stroke-width="1.3"><path d="M4 12l16-8-6 16-2.6-6z"/></svg></div><div><div class="st-num">05</div><div class="st-t">Отправка запроса</div></div></div>
+    </div>
+    <p class="ba-note reveal" style="margin-top:22px">Изображения и экраны — концепт-демонстрация интерфейса. Визуализация показывает возможное эстетическое направление, а не клинический результат.</p>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section id="problem">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Почему это важно</span>
+      <h2>Сложно решиться на улыбку, которую пока невозможно увидеть</h2>
+      <p class="lead" style="margin-top:18px">До консультации человек часто не понимает, какой результат хочет и в какую клинику обращаться. Поэтому интерес к улыбке откладывается на месяцы.</p>
+    </div>
+    <div class="cmp">
+      <div class="col now reveal">
+        <h4>Как сейчас</h4>
+        <ul>
+          <li><span class="mk">—</span>Смотреть чужие «до/после» и гадать, подойдёт ли это вам</li>
+          <li><span class="mk">—</span>Писать в клиники без понимания желаемого результата</li>
+          <li><span class="mk">—</span>Бояться стоимости, боли и навязанных процедур</li>
+          <li><span class="mk">—</span>Откладывать консультацию месяцами</li>
+        </ul>
+      </div>
+      <div class="col with reveal d1">
+        <h4>Со Smile</h4>
+        <ul>
+          <li><span class="mk">✓</span>Селфи превращается в визуальный ориентир</li>
+          <li><span class="mk">✓</span>Можно сравнить несколько стилей улыбки</li>
+          <li><span class="mk">✓</span>Запрос в клинику становится конкретнее</li>
+          <li><span class="mk">✓</span>Клиника видит интерес пациента до первого звонка</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW -->
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Как работает Smile</span>
+      <h2>Пять шагов от интереса к понятной заявке</h2>
+    </div>
+    <div class="grid g5">
+      <div class="card reveal"><div class="num">01</div><h3>Сделайте селфи</h3><p>Smile постарается проверить свет, положение лица и видимость улыбки перед генерацией.</p><div class="micro">Цель — меньше неудачных фото и пустых генераций.</div></div>
+      <div class="card reveal d1"><div class="num">02</div><h3>Выберите стиль</h3><p>Естественный, ровная улыбка, виниры или более яркая эстетика.</p><div class="micro">Вы выбираете направление, а не пишете «сделайте красиво».</div></div>
+      <div class="card reveal d2"><div class="num">03</div><h3>Получите визуализацию</h3><p>Smile создаёт изображение возможного эстетического направления.</p><div class="micro">Это визуальный ориентир, не медицинское заключение.</div></div>
+      <div class="card reveal d3"><div class="num">04</div><h3>Сравните до/после</h3><p>Слайдер помогает увидеть разницу и понять, какой стиль вам ближе.</p><div class="micro">Интерес становится осознанным намерением.</div></div>
+      <div class="card reveal d4"><div class="num">05</div><h3>Отправьте запрос</h3><p>Если результат подходит, вы можете отправить визуализацию в клинику.</p><div class="micro">Только после вашего явного согласия.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- STYLES -->
+<section id="styles">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Стили улыбки</span>
+      <h2>Не один «идеальный» результат, а несколько направлений</h2>
+      <p class="lead" style="margin-top:18px">Smile помогает выбрать эстетическое направление перед консультацией. Реальный план лечения и возможность результата определяет врач.</p>
+    </div>
+    <div class="grid g4">
+      <div class="card style-card reveal"><div class="swatch" style="background:linear-gradient(135deg,#F4EFE7,#DFD5C5)"></div><h3>Естественный</h3><p>Мягкое осветление без ощущения искусственной улыбки.</p></div>
+      <div class="card style-card reveal d1"><div class="swatch" style="background:linear-gradient(135deg,#EDE7DA,#CFE9E2)"></div><h3>Ровная улыбка</h3><p>Акцент на симметрии, линии зубов и аккуратном визуальном результате.</p></div>
+      <div class="card style-card reveal d2"><div class="swatch" style="background:linear-gradient(135deg,#F7F3EC,#F0E6D4)"></div><h3>Виниры</h3><p>Более выраженная эстетика формы, цвета и пропорций.</p></div>
+      <div class="card style-card reveal d3"><div class="swatch" style="background:linear-gradient(135deg,#FFFFFF,#E7C9A3)"></div><h3>Яркая эстетика</h3><p>Максимально заметная трансформация для тех, кто хочет выразительный эффект.</p></div>
+    </div>
+    <p class="ba-note reveal" style="margin-top:24px">Стили — это визуальные направления. Они не означают, что конкретная процедура подходит именно вам. Имеются противопоказания, необходима консультация специалиста.</p>
+  </div>
+</section>
+
+<!-- BEFORE / AFTER -->
+<section id="beforeafter">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="eyebrow">До / после</span>
+      <h2>Сравнение, которое можно почувствовать</h2>
+      <p class="lead" style="margin-top:18px">Визуализация помогает увидеть общее впечатление от улыбки и выражения — потяните ползунок.</p>
+    </div>
+    <div class="ba-wrap reveal">
+      <div class="ba" id="ba">
+        <!-- BEFORE -->
+        <div class="layer before">
+          <svg viewBox="0 0 400 300" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <rect width="400" height="300" fill="#161c1e"/>
+            <ellipse cx="200" cy="150" rx="150" ry="88" fill="#20282a"/>
+            <path d="M120 150 Q200 210 280 150 Q200 176 120 150Z" fill="#0c1011"/>
+            <g fill="#b9b0a0">
+              <rect x="150" y="150" width="17" height="26" rx="3"/><rect x="170" y="150" width="18" height="30" rx="3"/>
+              <rect x="191" y="150" width="18" height="30" rx="3"/><rect x="212" y="150" width="18" height="28" rx="3"/>
+              <rect x="233" y="151" width="16" height="24" rx="3"/>
+            </g>
+          </svg>
+        </div>
+        <!-- AFTER -->
+        <div class="layer after" id="baAfter">
+          <svg viewBox="0 0 400 300" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <rect width="400" height="300" fill="#161c1e"/>
+            <ellipse cx="200" cy="150" rx="150" ry="88" fill="#20282a"/>
+            <path d="M120 150 Q200 214 280 150 Q200 178 120 150Z" fill="#0c1011"/>
+            <g fill="#fbf7f0">
+              <rect x="150" y="150" width="18" height="28" rx="4"/><rect x="171" y="150" width="18" height="30" rx="4"/>
+              <rect x="192" y="150" width="18" height="30" rx="4"/><rect x="213" y="150" width="18" height="28" rx="4"/>
+              <rect x="234" y="150" width="17" height="26" rx="4"/>
+            </g>
+            <path d="M150 149 h101" stroke="#78D3C2" stroke-width="1.4" opacity=".5"/>
+          </svg>
+        </div>
+        <span class="lbl l">До</span>
+        <span class="lbl r">После · AI</span>
+        <div class="handle" id="baHandle"><div class="knob">⇆</div></div>
+      </div>
+      <p class="ba-note">Схематичный AI-концепт интерфейса, а не фотография пациента и не клинический результат. AI-визуализация меняет преимущественно зубы, но как сгенерированное изображение может отличаться от реального результата лечения.</p>
+      <div class="trust-mini">
+        <h4>Что важно понимать</h4>
+        <ul>
+          <li><span class="mk">✓</span>AI-визуализация может отличаться от результата лечения</li>
+          <li><span class="mk">✓</span>Врач определяет, какие процедуры возможны</li>
+          <li><span class="mk">✓</span>Точную стоимость определяет клиника после диагностики</li>
+          <li><span class="mk">✓</span>Фото не передаётся в клинику без вашего согласия</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PATIENTS -->
+<section id="patients">
+  <div class="wrap two-panel">
+    <div class="reveal">
+      <span class="eyebrow">Для пациентов</span>
+      <h2 style="font-size:clamp(30px,4.4vw,52px)">Понять, с чего начать, до первой консультации</h2>
+      <p class="lead" style="margin-top:20px">Smile помогает сформулировать желание визуально: выбрать направление улыбки, сравнить варианты и обратиться в клинику уже с понятным запросом.</p>
+      <a href="#access" class="btn btn-primary" style="margin-top:28px" data-goal="cta_patients">Получить ранний доступ <span class="arw">→</span></a>
+    </div>
+    <div class="card reveal d1" style="padding:30px">
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:15px">
+        <li style="display:flex;gap:12px;color:var(--paper-dim);font-size:15.5px"><span style="color:var(--accent)">✓</span>Не нужно сразу разбираться в стоматологических терминах</li>
+        <li style="display:flex;gap:12px;color:var(--paper-dim);font-size:15.5px"><span style="color:var(--accent)">✓</span>Можно сравнить стили до записи</li>
+        <li style="display:flex;gap:12px;color:var(--paper-dim);font-size:15.5px"><span style="color:var(--accent)">✓</span>Заявка отправляется только после вашего согласия</li>
+        <li style="display:flex;gap:12px;color:var(--paper-dim);font-size:15.5px"><span style="color:var(--accent)">✓</span>Точную стоимость определяет клиника после консультации</li>
+        <li style="display:flex;gap:12px;color:var(--paper-dim);font-size:15.5px"><span style="color:var(--accent)">✓</span>Визуализация помогает объяснить врачу, что вам нравится</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- CLINICS -->
+<section id="clinics">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Для клиник</span>
+      <h2>Запрос с визуальным намерением, а не просто номер телефона</h2>
+      <p class="lead" style="margin-top:18px">Обычная заявка часто звучит как «хочу красивую улыбку, сколько стоит?». Smile помогает пациенту заранее выбрать направление и прийти к вам с понятным визуальным запросом.</p>
+    </div>
+    <div class="clinic-cmp">
+      <div class="box plain reveal">
+        <div class="t">Обычная заявка</div>
+        <ul>
+          <li><span style="color:var(--muted)">•</span>Имя</li>
+          <li><span style="color:var(--muted)">•</span>Телефон</li>
+          <li><span style="color:var(--muted)">•</span>«Хочу узнать цену»</li>
+        </ul>
+      </div>
+      <div class="box smart reveal d1">
+        <div class="t">Запрос через Smile</div>
+        <ul>
+          <li><span style="color:var(--accent)">✓</span>Имя и контакт</li>
+          <li><span style="color:var(--accent)">✓</span>Город</li>
+          <li><span style="color:var(--accent)">✓</span>Выбранный стиль улыбки</li>
+          <li><span style="color:var(--accent)">✓</span>AI-визуализация до/после</li>
+          <li><span style="color:var(--accent)">✓</span>Комментарий пациента</li>
+          <li><span style="color:var(--accent)">✓</span>Согласие на передачу данных</li>
+        </ul>
+      </div>
+    </div>
+    <div class="grid g3">
+      <div class="card reveal"><h3 style="font-size:20px">Более тёплый интерес</h3><p>Пациент приходит с осознанным запросом ещё до первого звонка.</p></div>
+      <div class="card reveal d1"><h3 style="font-size:20px">Понятнее ожидания</h3><p>Проще подготовить консультацию и объяснить диапазон процедур.</p></div>
+      <div class="card reveal d2"><h3 style="font-size:20px">Smile не заменяет врача</h3><p>Инструмент помогает начать разговор, а не ставит диагноз за клинику.</p></div>
+    </div>
+    <div style="margin-top:34px" class="reveal"><a href="#access-clinic" class="btn btn-ghost" data-goal="cta_clinic">Стать клиникой-партнёром <span class="arw">→</span></a></div>
+  </div>
+</section>
+
+<!-- TRUST -->
+<section id="trust">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Доверие и безопасность</span>
+      <h2>Честная визуализация без медицинских обещаний</h2>
+      <p class="lead" style="margin-top:18px">Smile создаёт визуальный ориентир для первой консультации. Он помогает представить возможное направление эстетики, но не заменяет диагностику, врача или план лечения.</p>
+    </div>
+    <div class="trust-grid">
+      <div class="trust-cell reveal"><div class="ic">✕</div><h3>Не диагноз</h3><p>Smile не определяет состояние зубов и не ставит медицинские заключения.</p></div>
+      <div class="trust-cell reveal d1"><div class="ic">✕</div><h3>Не план лечения</h3><p>Визуализация не означает, что вам подходят виниры, элайнеры, отбеливание или другие процедуры.</p></div>
+      <div class="trust-cell reveal d2"><div class="ic">✕</div><h3>Не гарантия результата</h3><p>Фактический результат зависит от клинической ситуации, диагностики и выбранного лечения.</p></div>
+      <div class="trust-cell reveal"><div class="ic">✓</div><h3>Только после согласия</h3><p>Клиника получает заявку и визуализацию только после вашего явного действия.</p></div>
+      <div class="trust-cell reveal d1"><div class="ic">✓</div><h3>Проверка качества фото</h3><p>Если фото не подходит, Smile старается объяснить причину до генерации.</p></div>
+      <div class="trust-cell reveal d2"><div class="ic">✓</div><h3>Пометка AI</h3><p>AI-визуализации помечаются как созданные искусственно.</p></div>
+    </div>
+    <div class="trust-mini reveal" style="margin-top:22px">
+      <h4>Как используются данные (152-ФЗ)</h4>
+      <ul>
+        <li><span class="mk">→</span>Фото используется только для создания визуализации</li>
+        <li><span class="mk">→</span>Заявка передаётся в клинику только после вашего согласия</li>
+        <li><span class="mk">→</span>В beta мы не передаём фото третьим сторонам без вашего действия</li>
+        <li><span class="mk">→</span>Согласие на обработку персональных данных можно отозвать</li>
+      </ul>
+      <p style="font-size:12.5px;color:var(--muted);margin-top:14px">Политика конфиденциальности и пользовательское соглашение публикуются до полноценного запуска beta. До этого момента обработка данных ведётся в объёме, необходимом для связи с вами.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ACCESS / FORMS -->
+<section id="access">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="eyebrow">Beta</span>
+      <h2>Запуск через ранний доступ и первые клиники</h2>
+      <p class="lead" style="margin-top:18px">Smile в beta. Мы подключаем первых пользователей и клиники, чтобы проверить качество визуализации, удобство заявки и пользу для консультации.</p>
+    </div>
+    <div class="forms">
+      <!-- PATIENT -->
+      <div class="form-card reveal" id="access-patient">
+        <div class="form-fields">
+          <h3>Получить ранний доступ</h3>
+          <p class="fsub">Оставьте контакт — сообщим, когда beta будет доступна в вашем городе.</p>
+          <form id="patientForm" novalidate>
+            <div class="field"><label>Имя</label><input name="name" required autocomplete="name" placeholder="Как к вам обращаться"></div>
+            <div class="field"><label>Телефон / Telegram / WhatsApp</label><input name="contact" required placeholder="+7… или @username"></div>
+            <div class="field"><label>Город</label><input name="city" placeholder="Например, Москва"></div>
+            <div class="field"><label>Что вас интересует?</label>
+              <select name="interest">
+                <option>Отбеливание</option><option>Ровная улыбка</option><option>Виниры</option><option>Пока не знаю</option>
+              </select>
+            </div>
+            <div class="field"><label>Комментарий (необязательно)</label><textarea name="comment" placeholder="Что хотелось бы изменить"></textarea></div>
+            <label class="consent"><input type="checkbox" name="consent" required><span>Я даю согласие оператору [ООО «___» / ИП ___] на обработку моих персональных данных (имя, контакты) с целью связи по заявке, в соответствии с 152-ФЗ и <a href="#" onclick="return false">политикой конфиденциальности</a>. Согласие можно отозвать.</span></label>
+            <button type="submit" class="btn btn-primary" data-goal="lead_patient">Получить ранний доступ <span class="arw">→</span></button>
+          </form>
+          <p class="form-alt">или сразу написать нам — <a href="#" id="tgPatient" style="color:var(--accent)">в Telegram</a></p>
+        </div>
+        <div class="thanks" id="patientThanks">
+          <div class="ok">✓</div>
+          <h4>Спасибо! Заявка получена</h4>
+          <p>Когда beta будет доступна в вашем городе, мы свяжемся с вами.</p>
+        </div>
+      </div>
+
+      <!-- CLINIC -->
+      <div class="form-card clinic reveal d1" id="access-clinic">
+        <div class="form-fields">
+          <h3>Стать клиникой-партнёром</h3>
+          <p class="fsub">Обсудим формат пилотного партнёрства и как приходят заявки.</p>
+          <form id="clinicForm" novalidate>
+            <div class="field"><label>Название клиники</label><input name="clinic" required placeholder="Название"></div>
+            <div class="field"><label>Город</label><input name="city" placeholder="Город"></div>
+            <div class="field"><label>Контактное лицо</label><input name="person" placeholder="Имя, роль"></div>
+            <div class="field"><label>Телефон / Telegram</label><input name="contact" required placeholder="+7… или @username"></div>
+            <div class="field"><label>Email</label><input name="email" type="email" placeholder="mail@clinic.ru"></div>
+            <div class="field"><label>Что интересно?</label>
+              <select name="interest"><option>Пилот</option><option>Заявки / лиды</option><option>Партнёрство</option></select>
+            </div>
+            <div class="field"><label>Комментарий (необязательно)</label><textarea name="comment" placeholder="Ваши вопросы"></textarea></div>
+            <label class="consent"><input type="checkbox" name="consent" required><span>Я даю согласие оператору [ООО «___» / ИП ___] на обработку данных клиники (название, контакты) с целью связи по заявке, в соответствии с 152-ФЗ и <a href="#" onclick="return false">политикой конфиденциальности</a>. Согласие можно отозвать.</span></label>
+            <button type="submit" class="btn btn-tg" data-goal="lead_clinic">Отправить заявку клиники <span class="arw">→</span></button>
+          </form>
+          <p class="form-alt">или написать — <a href="#" id="tgClinic" style="color:var(--warm)">в Telegram</a></p>
+        </div>
+        <div class="thanks" id="clinicThanks">
+          <div class="ok">✓</div>
+          <h4>Спасибо! Заявка клиники получена</h4>
+          <p>Свяжемся с вами, чтобы обсудить формат пилотного партнёрства.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-head center reveal"><span class="eyebrow">Вопросы</span><h2>Коротко о главном</h2></div>
+    <div class="faq reveal">
+      <div class="faq-item"><button class="faq-q">Это медицинский диагноз?<span class="pm">+</span></button><div class="faq-a"><p>Нет. Smile не ставит диагноз и не определяет лечение. Визуализация помогает представить возможное эстетическое направление до консультации.</p></div></div>
+      <div class="faq-item"><button class="faq-q">AI покажет точный результат лечения?<span class="pm">+</span></button><div class="faq-a"><p>Нет. AI-визуализация может отличаться от реального результата. Точный план и прогноз определяет врач после диагностики.</p></div></div>
+      <div class="faq-item"><button class="faq-q">Моё фото отправляется в клинику автоматически?<span class="pm">+</span></button><div class="faq-a"><p>Нет. Клиника получает заявку только после вашего действия и согласия на обработку персональных данных.</p></div></div>
+      <div class="faq-item"><button class="faq-q">Можно ли узнать точную цену?<span class="pm">+</span></button><div class="faq-a"><p>Smile не показывает цены и не рассчитывает стоимость. Точную стоимость определяет клиника после консультации и диагностики — это зависит от клинической ситуации и выбранного лечения.</p></div></div>
+      <div class="faq-item"><button class="faq-q">Для каких процедур подходит Smile?<span class="pm">+</span></button><div class="faq-a"><p>Smile помогает визуально обсудить эстетические направления — отбеливание, выравнивание, виниры. Но решение о конкретной процедуре принимает врач.</p></div></div>
+      <div class="faq-item"><button class="faq-q">Клиника видит оригинальное фото?<span class="pm">+</span></button><div class="faq-a"><p>Клиника получает только те материалы, на передачу которых вы дали явное согласие. В beta это фиксируется в политике продукта.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL -->
+<section class="final" id="access-clinic-anchor">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="eyebrow" style="justify-content:center">Начните здесь</span>
+      <h2>Начните с улыбки, которую можно увидеть</h2>
+      <p class="lead center">Smile помогает превратить абстрактное «хочу красивую улыбку» в понятный визуальный запрос для клиники.</p>
+      <div class="cta-row">
+        <a href="#access" class="btn btn-primary" data-goal="cta_final_patient">Получить ранний доступ <span class="arw">→</span></a>
+        <a href="#access-clinic" class="btn btn-ghost" data-goal="cta_final_clinic">Стать клиникой-партнёром</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="brand" style="font-size:22px"><span class="dot"></span>Smile</div>
+    <p class="legal">Smile — визуальный ориентир перед консультацией. Не является медицинским изделием, средством диагностики или гарантией результата лечения. Имеются противопоказания, необходима консультация специалиста. Обработка персональных данных — в соответствии с 152-ФЗ. © 2026 Smile · Beta</p>
+  </div>
+</footer>
+
+<script>
+/* ================= CONFIG — замените значения ниже ================= */
+const CONFIG = {
+  telegram: "https://t.me/your_smile_bot",          // ← ваш Telegram-бот/аккаунт
+  patientFormAction: "",                             // ← URL Yandex Forms (RU-хостинг) для пациентов; пусто = только Telegram/лог
+  clinicFormAction:  "",                             // ← URL Yandex Forms для клиник
+  metrikaId: null                                    // ← ID счётчика Яндекс.Метрики (число), напр. 99999999
+};
+/* ================================================================== */
+
+/* ---- Яндекс.Метрика (RU-native аналитика). Активируется при заданном metrikaId ---- */
+(function(){
+  if(!CONFIG.metrikaId) return;
+  (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+  m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0];k.async=1;k.src=r;a.parentNode.insertBefore(k,a)})
+  (window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
+  ym(CONFIG.metrikaId,"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true});
+})();
+function goal(name,params){
+  if(CONFIG.metrikaId && window.ym){ ym(CONFIG.metrikaId,"reachGoal",name,params||{}); }
+  // Fallback-лог, чтобы события были видны в консоли даже без Метрики:
+  console.log("[smile-event]",name,params||"");
+}
+
+/* ---- Telegram links ---- */
+document.getElementById('tgPatient').href = CONFIG.telegram;
+document.getElementById('tgClinic').href = CONFIG.telegram;
+
+/* ---- Nav scroll state ---- */
+const nav=document.getElementById('nav');
+addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>40));
+
+/* ---- Mobile menu ---- */
+const burger=document.getElementById('burger'),navLinks=document.getElementById('navLinks');
+burger.addEventListener('click',()=>navLinks.classList.toggle('open'));
+navLinks.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>navLinks.classList.remove('open')));
+
+/* ---- Cursor halo (trailing) ---- */
+const halo=document.getElementById('halo');
+let hx=innerWidth/2,hy=innerHeight/2,tx=hx,ty=hy;
+addEventListener('mousemove',e=>{tx=e.clientX;ty=e.clientY});
+(function loop(){hx+=(tx-hx)*.09;hy+=(ty-hy)*.09;halo.style.transform=`translate(${hx}px,${hy}px) translate(-50%,-50%)`;requestAnimationFrame(loop)})();
+
+/* ---- Reveal on scroll ---- */
+const io=new IntersectionObserver((es)=>es.forEach(en=>{if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target)}}),{threshold:.14});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+/* ---- FAQ accordion ---- */
+document.querySelectorAll('.faq-q').forEach(q=>q.addEventListener('click',()=>{
+  const item=q.parentElement,open=item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(i=>{i.classList.remove('open');i.querySelector('.faq-a').style.maxHeight=null});
+  if(!open){item.classList.add('open');const a=item.querySelector('.faq-a');a.style.maxHeight=a.scrollHeight+'px'}
+}));
+
+/* ---- Before/After slider ---- */
+(function(){
+  const ba=document.getElementById('ba'),after=document.getElementById('baAfter'),handle=document.getElementById('baHandle');
+  let drag=false;
+  function set(x){
+    const r=ba.getBoundingClientRect();let p=(x-r.left)/r.width;p=Math.max(0,Math.min(1,p));
+    after.style.clipPath=`inset(0 0 0 ${p*100}%)`;handle.style.left=(p*100)+'%';
+  }
+  const start=()=>drag=true, end=()=>drag=false;
+  const move=e=>{if(!drag)return;const x=e.touches?e.touches[0].clientX:e.clientX;set(x)};
+  ba.addEventListener('mousedown',e=>{drag=true;set(e.clientX)});
+  ba.addEventListener('touchstart',e=>{drag=true;set(e.touches[0].clientX)},{passive:true});
+  addEventListener('mousemove',move);addEventListener('touchmove',move,{passive:true});
+  addEventListener('mouseup',end);addEventListener('touchend',end);
+  set(ba.getBoundingClientRect().left+ba.getBoundingClientRect().width*0.5);
+})();
+
+/* ---- CTA goal tracking ---- */
+document.querySelectorAll('[data-goal]').forEach(el=>{
+  if(el.tagName==='BUTTON'&&el.type==='submit')return; // submit обрабатывается отдельно
+  el.addEventListener('click',()=>goal(el.dataset.goal));
+});
+
+/* ---- "Дошёл до формы" — один раз ---- */
+let reachedForm=false;
+new IntersectionObserver((es)=>es.forEach(en=>{
+  if(en.isIntersecting&&!reachedForm){reachedForm=true;goal('reached_form')}
+}),{threshold:.3}).observe(document.getElementById('access'));
+
+/* ---- Form submit → thank-you + goal ---- */
+function handleForm(form,thanksId,action,goalName){
+  form.addEventListener('submit',e=>{
+    e.preventDefault();
+    if(!form.checkValidity()){form.reportValidity();return}
+    goal(goalName);
+    goal('lead_submit');
+    const send=()=>{
+      form.closest('.form-card').querySelector('.form-fields').classList.add('form-hidden');
+      document.getElementById(thanksId).classList.add('show');
+    };
+    if(action){
+      // Отправка в Yandex Forms / внешний endpoint (когда указан URL)
+      fetch(action,{method:'POST',mode:'no-cors',body:new FormData(form)}).finally(send);
+    } else {
+      // Пока endpoint не задан: fallback — открыть Telegram с данными
+      const data=Object.fromEntries(new FormData(form).entries());
+      const txt=encodeURIComponent('Заявка Smile:\n'+Object.entries(data).filter(([k])=>k!=='consent').map(([k,v])=>`${k}: ${v}`).join('\n'));
+      window.open(CONFIG.telegram+'?text='+txt,'_blank');
+      send();
+    }
+  });
+}
+handleForm(document.getElementById('patientForm'),'patientThanks',CONFIG.patientFormAction,'lead_patient');
+handleForm(document.getElementById('clinicForm'),'clinicThanks',CONFIG.clinicFormAction,'lead_clinic');
+</script>
+</body>
+</html>
