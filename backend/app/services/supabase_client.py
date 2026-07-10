@@ -150,6 +150,26 @@ class SupabaseClient:
             raise SupabaseError(f"download failed: {resp.status_code} {resp.text}")
         return resp.content
 
+    async def remove_objects(self, paths: list[str]) -> list[dict[str, Any]]:
+        """Delete objects through Storage API so both metadata and file bytes are removed."""
+        self._require()
+        unique_paths = list(dict.fromkeys(path for path in paths if path))
+        if not unique_paths:
+            return []
+
+        bucket = self.settings.supabase_storage_bucket
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.request(
+                "DELETE",
+                f"{self._storage_base}/object/{bucket}",
+                headers=self._headers(),
+                json={"prefixes": unique_paths},
+            )
+        if resp.status_code >= 400:
+            raise SupabaseError(f"storage delete failed: {resp.status_code} {resp.text}")
+        data = resp.json()
+        return data if isinstance(data, list) else []
+
 
 _client: SupabaseClient | None = None
 

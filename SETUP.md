@@ -57,6 +57,17 @@ When no Supabase values are compiled in, the local-only mock OTP is `000000` and
 the API client sends `mock-dev-token`. A production build must include the real
 public values; the backend independently rejects mock auth in production.
 
+Migration `0009_photo_retention.sql` makes photo deletion retryable. After it is
+applied, configure a daily Railway cron using the same backend image:
+
+```bash
+python -m app.jobs.retention --limit 100
+```
+
+Run `python -m app.jobs.retention --dry-run --limit 100` first. The live command
+removes original/result/mask objects through the Storage API, then clears their paths
+and records `photo_deleted_at`. A failed delete stays pending for the next run.
+
 ## 2. Fal.ai (inference) — pay per use (~$0.05/MP)
 
 1. Create a key at https://fal.ai/dashboard/keys
