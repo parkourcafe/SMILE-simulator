@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+import secrets
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.deps import require_admin
+from app.routers.leads import hash_clinic_api_key
 from app.services.supabase_client import get_supabase
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -53,3 +57,44 @@ async def upsert_clinic(clinic: dict) -> dict:
         rows = await sb.update("clinics", filters={"id": f"eq.{clinic['id']}"}, patch=clinic)
         return rows[0] if rows else {}
     return await sb.insert("clinics", clinic)
+
+
+@router.post("/clinics/{clinic_id}/keys", status_code=201)
+async def create_clinic_key(clinic_id: str, label: str | None = None) -> dict:
+    """Create a revocable clinic credential and return the plaintext once."""
+    if label is not None and not 1 <= len(label.strip()) <= 120:
+        raise HTTPException(status_code=422, detail="invalid_label")
+    sb = get_supabase()
+    clinics = await sb.select("clinics", filters={"id": f"eq.{clinic_id}"}, limit=1)
+    if not clinics:
+        raise HTTPException(status_code=404, detail="clinic_not_found")
+
+    plaintext = f"zlk_{secrets.token_urlsafe(32)}"
+    row = await sb.insert(
+        "clinic_api_keys",
+        {
+            "clinic_id": clinic_id,
+            "key_hash": hash_clinic_api_key(plaintext),
+            "label": label.strip() if label else None,
+            "status": "active",
+        },
+    )
+    return {
+        "id": row["id"],
+        "clinic_id": clinic_id,
+        "label": row.get("label"),
+        "key": plaintext,
+    }
+
+
+@router.post("/clinic-keys/{key_id}/revoke")
+async def revoke_clinic_key(key_id: str) -> dict:
+    sb = get_supabase()
+    rows = await sb.update(
+        "clinic_api_keys",
+        filters={"id": f"eq.{key_id}", "status": "eq.active"},
+        patch={"status": "revoked", "revoked_at": datetime.now(UTC).isoformat()},
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="clinic_key_not_found")
+    return {"id": key_id, "status": "revoked"}
