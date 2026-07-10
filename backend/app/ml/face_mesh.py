@@ -8,8 +8,8 @@ centered mouth region so the pipeline still runs end-to-end; the result flags
 ``approximate=True`` so callers can decide whether to trust it.
 
 The model bundle path is resolved from ``MEDIAPIPE_FACE_MODEL`` or defaults to
-``api-gateway/.cache/face_landmarker.task``. Download it once with:
-  curl -L -o api-gateway/.cache/face_landmarker.task \\
+``backend/.cache/face_landmarker.task``. Download it once with:
+  curl -L -o backend/.cache/face_landmarker.task \\
     https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
 
 Landmark indices come from CLAUDE.md (ML Pipeline Details).
@@ -108,7 +108,12 @@ def _detect_faces(img: Image.Image) -> list | None:
 
     rgb = np.ascontiguousarray(np.asarray(img.convert("RGB"), dtype=np.uint8))
     options = vision.FaceLandmarkerOptions(
-        base_options=mp_python.BaseOptions(model_asset_path=model_path),
+        # Keep server and headless macOS runs on CPU. An unspecified delegate can
+        # initialize a Metal/OpenGL context and abort before Python can recover.
+        base_options=mp_python.BaseOptions(
+            model_asset_path=model_path,
+            delegate=mp_python.BaseOptions.Delegate.CPU,
+        ),
         num_faces=2,
     )
     with vision.FaceLandmarker.create_from_options(options) as landmarker:
