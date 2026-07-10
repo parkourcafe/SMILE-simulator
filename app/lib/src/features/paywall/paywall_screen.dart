@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../api/models.dart';
-import '../../providers/entitlements.dart';
 import '../../providers/providers.dart';
 
 /// Action-locked paywall (v1.1). Multi-page: value proposition → plans.
