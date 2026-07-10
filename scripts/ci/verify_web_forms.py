@@ -10,7 +10,6 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlparse
 
-
 ROOT = Path(__file__).resolve().parents[2]
 HTML_PATH = ROOT / "web" / "index.html"
 PROJECT_REF = "htclwrotnmhtbrdisqcu"
@@ -102,13 +101,9 @@ def main() -> None:
         "'Prefer': 'return=minimal'": 1,
     }
     for fragment, minimum_count in required_payload_fragments.items():
-        assert html.count(fragment) >= minimum_count, (
-            f"Missing form payload fragment: {fragment}"
-        )
+        assert html.count(fragment) >= minimum_count, f"Missing form payload fragment: {fragment}"
 
-    print(
-        "Landing forms use the expected public Supabase project and consent contract."
-    )
+    print("Landing forms use the expected public Supabase project and consent contract.")
 
 
 if __name__ == "__main__":
