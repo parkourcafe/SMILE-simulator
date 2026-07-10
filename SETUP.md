@@ -40,6 +40,17 @@ For production, also set a random `ADMIN_API_KEY` of at least 32 characters and 
 explicit comma-separated `CORS_ALLOWED_ORIGINS`. Startup fails if production uses
 mock auth, a default admin key, missing Supabase keys, or wildcard CORS.
 
+Migration `0009_photo_retention.sql` makes photo deletion retryable. After it is
+applied, configure a daily Railway cron using the same backend image:
+
+```bash
+python -m app.jobs.retention --limit 100
+```
+
+Run `python -m app.jobs.retention --dry-run --limit 100` first. The live command
+removes original/result/mask objects through the Storage API, then clears their paths
+and records `photo_deleted_at`. A failed delete stays pending for the next run.
+
 ## 2. Fal.ai (inference) — pay per use (~$0.05/MP)
 
 1. Create a key at https://fal.ai/dashboard/keys

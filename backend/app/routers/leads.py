@@ -30,7 +30,11 @@ async def submit_lead(body: LeadRequest, user: CurrentUser = Depends(get_current
         raise HTTPException(status_code=404, detail="clinic_not_found")
     clinic = clinics[0]
 
-    gens = await sb.select("generations", filters={"id": f"eq.{body.generation_id}"}, limit=1)
+    gens = await sb.select(
+        "generations",
+        filters={"id": f"eq.{body.generation_id}", "deleted_at": "is.null"},
+        limit=1,
+    )
     if not gens or gens[0]["user_id"] != user.id:
         raise HTTPException(status_code=404, detail="generation_not_found")
 
