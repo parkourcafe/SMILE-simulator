@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 GenerationStatus = str  # pending | processing | completed | failed
 PackTypeStr = str  # mini | main | extended | promo
@@ -117,11 +118,16 @@ class ClinicOut(BaseModel):
 
 
 class LeadRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     clinic_id: UUID
     generation_id: UUID
-    name: str
-    phone: str
-    preferred_time: str | None = None
+    name: str = Field(min_length=1, max_length=120)
+    phone: str = Field(pattern=r"^\+[1-9]\d{7,14}$")
+    preferred_time: Literal["morning", "afternoon", "evening"] | None = None
+    consent_given: Literal[True]
+    consent_version: str = Field(min_length=1, max_length=80)
+    consent_locale: Literal["ru", "en", "uz"]
 
 
 class LeadOut(BaseModel):
