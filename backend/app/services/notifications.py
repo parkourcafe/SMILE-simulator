@@ -23,6 +23,7 @@ from email.message import EmailMessage
 import httpx
 
 from app.config import Settings, get_settings
+from app.observability import capture_exception
 
 log = logging.getLogger("smile.notifications")
 
@@ -77,8 +78,12 @@ async def _send_email(settings: Settings, to_email: str, body: str) -> NotifyRes
         )
         return NotifyResult("email", True)
     except Exception as exc:  # noqa: BLE001 - notification failure must not break the lead
-        log.warning("email notify failed: %s", exc)
-        return NotifyResult("email", False, str(exc)[:200])
+        capture_exception(exc)
+        log.warning(
+            "clinic_email_failed",
+            extra={"event": "clinic_email_failed", "error_type": type(exc).__name__},
+        )
+        return NotifyResult("email", False, "delivery_failed")
 
 
 async def _send_whatsapp(settings: Settings, to_phone: str, body: str) -> NotifyResult:
@@ -96,11 +101,15 @@ async def _send_whatsapp(settings: Settings, to_phone: str, body: str) -> Notify
         async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.post(url, json=payload, headers=headers)
         if resp.status_code >= 400:
-            return NotifyResult("whatsapp", False, f"{resp.status_code}: {resp.text[:160]}")
+            return NotifyResult("whatsapp", False, f"provider_http_{resp.status_code}")
         return NotifyResult("whatsapp", True)
     except Exception as exc:  # noqa: BLE001
-        log.warning("whatsapp notify failed: %s", exc)
-        return NotifyResult("whatsapp", False, str(exc)[:200])
+        capture_exception(exc)
+        log.warning(
+            "clinic_whatsapp_failed",
+            extra={"event": "clinic_whatsapp_failed", "error_type": type(exc).__name__},
+        )
+        return NotifyResult("whatsapp", False, "delivery_failed")
 
 
 async def notify_clinic(clinic: dict, lead: dict, result_url: str | None = None) -> NotifyResult:
@@ -123,11 +132,12 @@ async def notify_clinic(clinic: dict, lead: dict, result_url: str | None = None)
         return email
 
     # Nothing configured/worked — log so the lead can be followed up manually.
-    log.info(
-        "lead %s for clinic %s not delivered (wa=%s, email=%s)",
-        lead.get("id"),
-        clinic.get("id"),
-        wa.detail,
-        email.detail,
+    log.error(
+        "clinic_notification_not_delivered",
+        extra={
+            "event": "clinic_notification_not_delivered",
+            "lead_id": lead.get("id"),
+            "clinic_id": clinic.get("id"),
+        },
     )
     return NotifyResult("skipped", False, f"wa={wa.detail}; email={email.detail}")

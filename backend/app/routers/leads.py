@@ -10,6 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException
 
 from app.deps import CurrentUser, get_current_user
+from app.observability import capture_exception
 from app.schemas import LeadOut, LeadRequest
 from app.services.branded_delivery import deliver_branded_result
 from app.services.notifications import notify_clinic
@@ -148,8 +149,16 @@ async def submit_lead(
             before_url=before_url,
             after_url=result_url,
         )
-    except Exception:  # noqa: BLE001 - delivery must not roll back the accepted lead
-        log.exception("branded delivery failed for lead %s", lead["id"])
+    except Exception as exc:  # noqa: BLE001 - delivery must not roll back the accepted lead
+        capture_exception(exc)
+        log.error(
+            "branded_delivery_failed",
+            extra={
+                "event": "branded_delivery_failed",
+                "lead_id": lead["id"],
+                "error_type": type(exc).__name__,
+            },
+        )
 
     lead["status"] = final_status
     return _lead_out(lead)

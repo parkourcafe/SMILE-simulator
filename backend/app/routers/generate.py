@@ -18,8 +18,14 @@ from pathlib import PurePosixPath
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from app.deps import CurrentUser, get_current_user
+from app.ml.face_mesh import FaceDetectionError
+from app.ml.photo import PhotoValidationError
 from app.ml.pipeline import run_pipeline
-from app.ml.providers.base import ProviderConfig  # noqa: F401 (documents the contract)
+from app.ml.providers.base import (  # noqa: F401 (documents the contract)
+    InferenceProviderError,
+    ProviderConfig,
+)
+from app.observability import capture_exception
 from app.routers.photo_consents import PHOTO_CONSENT_VERSION
 from app.schemas import (
     GenerateRequest,
@@ -35,6 +41,24 @@ from app.services.supabase_client import SupabaseClient, SupabaseError, get_supa
 
 router = APIRouter(prefix="/api/generate", tags=["generation"])
 log = logging.getLogger("smile.generate")
+
+_PHOTO_ERROR_CODES = {
+    "file_too_large",
+    "unreadable_image",
+    "unsupported_format",
+    "too_small",
+    "too_large_dimensions",
+}
+
+
+def _generation_error_code(exc: Exception) -> str:
+    if isinstance(exc, PhotoValidationError) and str(exc) in _PHOTO_ERROR_CODES:
+        return str(exc)
+    if isinstance(exc, FaceDetectionError):
+        return "multiple_faces" if str(exc) == "multiple_faces" else "no_face"
+    if isinstance(exc, InferenceProviderError):
+        return exc.code
+    return "generation_failed"
 
 
 def _validate_owned_photo_path(path: str, user_id: str) -> None:
@@ -155,12 +179,31 @@ async def _process(
             log.info("discarded result for deleted generation %s", generation_id)
             return
     except Exception as exc:  # noqa: BLE001 - record failure, do not crash worker
-        log.exception("generation %s failed", generation_id)
-        await sb.update(
-            "generations",
-            filters={"id": f"eq.{generation_id}", "deleted_at": "is.null"},
-            patch={"status": "failed", "error_message": str(exc)[:500]},
+        capture_exception(exc)
+        log.error(
+            "generation_failed",
+            extra={
+                "event": "generation_failed",
+                "generation_id": generation_id,
+                "error_type": type(exc).__name__,
+            },
         )
+        try:
+            await sb.update(
+                "generations",
+                filters={"id": f"eq.{generation_id}", "deleted_at": "is.null"},
+                patch={"status": "failed", "error_message": _generation_error_code(exc)},
+            )
+        except Exception as persistence_exc:  # noqa: BLE001 - watchdog releases the quota
+            capture_exception(persistence_exc)
+            log.error(
+                "generation_failure_persistence_failed",
+                extra={
+                    "event": "generation_failure_persistence_failed",
+                    "generation_id": generation_id,
+                    "error_type": type(persistence_exc).__name__,
+                },
+            )
 
 
 @router.post("", response_model=GenerationOut, status_code=202)

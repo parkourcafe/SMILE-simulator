@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     whatsapp_token: str = ""
     whatsapp_phone_id: str = ""
 
-    # Error tracking (optional). When set, backend reports errors to Sentry.
+    # Error tracking. Optional outside production; required by the production guard.
     sentry_dsn: str = ""
 
     # Dev artifacts (branded-result HTML rendered to file when SMTP is unconfigured).
@@ -171,6 +171,8 @@ class Settings(BaseSettings):
             errors.append("YOOKASSA_RETURN_URL must be a public HTTPS URL")
         if not self.smtp_host and not (self.whatsapp_token and self.whatsapp_phone_id):
             errors.append("SMTP or WhatsApp clinic notifications must be configured")
+        if not self.sentry_dsn.startswith("https://"):
+            errors.append("SENTRY_DSN must be a configured HTTPS DSN")
         if not 1 <= self.photo_retention_days <= 30:
             errors.append("PHOTO_RETENTION_DAYS must be between 1 and 30")
         if not 5 <= self.generation_reservation_timeout_minutes <= 60:

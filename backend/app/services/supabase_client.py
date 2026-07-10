@@ -78,7 +78,7 @@ class SupabaseClient:
                 f"{self._rest_base}/{table}", headers=self._headers(), params=params
             )
         if resp.status_code >= 400:
-            raise SupabaseError(f"select {table} failed: {resp.status_code} {resp.text}")
+            raise SupabaseError(f"select {table} failed with status {resp.status_code}")
         return resp.json()
 
     async def ping(self) -> None:
@@ -149,7 +149,7 @@ class SupabaseClient:
                 json=row,
             )
         if resp.status_code >= 400:
-            raise SupabaseError(f"insert {table} failed: {resp.status_code} {resp.text}")
+            raise SupabaseError(f"insert {table} failed with status {resp.status_code}")
         data = resp.json()
         return data[0] if isinstance(data, list) else data
 
@@ -165,7 +165,7 @@ class SupabaseClient:
                 json=patch,
             )
         if resp.status_code >= 400:
-            raise SupabaseError(f"update {table} failed: {resp.status_code} {resp.text}")
+            raise SupabaseError(f"update {table} failed with status {resp.status_code}")
         return resp.json()
 
     async def rpc(self, function: str, params: dict[str, Any]) -> Any:
@@ -178,7 +178,7 @@ class SupabaseClient:
                 json=params,
             )
         if resp.status_code >= 400:
-            raise SupabaseError(f"rpc {function} failed: {resp.status_code} {resp.text}")
+            raise SupabaseError(f"rpc {function} failed with status {resp.status_code}")
         return resp.json()
 
     # --- Storage helpers ----------------------------------------------------
@@ -193,7 +193,7 @@ class SupabaseClient:
                 json={"expiresIn": expires_in},
             )
         if resp.status_code >= 400:
-            raise SupabaseError(f"sign url failed: {resp.status_code} {resp.text}")
+            raise SupabaseError(f"sign url failed with status {resp.status_code}")
         signed = resp.json()["signedURL"]
         return f"{self.settings.supabase_url}/storage/v1{signed}"
 
@@ -208,7 +208,7 @@ class SupabaseClient:
                 f"{self._storage_base}/object/{bucket}/{path}", headers=headers, content=data
             )
         if resp.status_code >= 400:
-            raise SupabaseError(f"upload failed: {resp.status_code} {resp.text}")
+            raise SupabaseError(f"upload failed with status {resp.status_code}")
         return path
 
     async def download(self, path: str) -> bytes:
@@ -219,7 +219,7 @@ class SupabaseClient:
                 f"{self._storage_base}/object/{bucket}/{path}", headers=self._headers()
             )
         if resp.status_code >= 400:
-            raise SupabaseError(f"download failed: {resp.status_code} {resp.text}")
+            raise SupabaseError(f"download failed with status {resp.status_code}")
         return resp.content
 
     async def remove_objects(self, paths: list[str]) -> list[dict[str, Any]]:
@@ -238,7 +238,7 @@ class SupabaseClient:
                 json={"prefixes": unique_paths},
             )
         if resp.status_code >= 400:
-            raise SupabaseError(f"storage delete failed: {resp.status_code} {resp.text}")
+            raise SupabaseError(f"storage delete failed with status {resp.status_code}")
         data = resp.json()
         return data if isinstance(data, list) else []
 

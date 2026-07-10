@@ -11,6 +11,14 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 
+class InferenceProviderError(RuntimeError):
+    """Stable provider failure safe to persist and return to the client."""
+
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)
+
+
 @dataclass
 class ProviderConfig:
     """Per-call configuration passed to a provider."""

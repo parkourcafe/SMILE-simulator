@@ -7,14 +7,13 @@ mobile client (architecture §1.1, CLAUDE.md critical rule).
 
 from __future__ import annotations
 
-import logging
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app import __version__
 from app.config import get_settings
+from app.observability import configure_logging, configure_sentry, install_observability
 from app.routers import (
     admin,
     clinics,
@@ -28,10 +27,10 @@ from app.routers import (
 )
 from app.services.supabase_client import SupabaseError, get_supabase
 
-logging.basicConfig(level=logging.INFO)
-
 settings = get_settings()
 settings.assert_safe_startup()
+configure_logging()
+configure_sentry(settings, release=f"zubilook-api@{__version__}")
 
 app = FastAPI(
     title="AI Smile Simulator API",
@@ -50,7 +49,9 @@ app.add_middleware(
         "X-Admin-Key",
         "X-Clinic-Key",
     ],
+    expose_headers=["X-Request-ID"],
 )
+install_observability(app)
 
 app.include_router(generate.router, prefix="/v1")
 app.include_router(styles.router, prefix="/v1")

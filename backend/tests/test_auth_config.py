@@ -123,6 +123,7 @@ def _otherwise_safe_production_settings(model_path: Path, **overrides) -> Settin
         "yookassa_secret_key": "payment_test",
         "yookassa_return_url": "https://www.zubilook.com/?payment=return",
         "smtp_host": "smtp.example.test",
+        "sentry_dsn": "https://public@sentry.example.test/1",
         "admin_api_key": "a" * 32,
         "cors_allowed_origins": "https://www.zubilook.com",
     }
@@ -149,6 +150,7 @@ def test_safe_production_configuration_passes_startup_guard(tmp_path):
         ({"yookassa_secret_key": ""}, "YooKassa"),
         ({"yookassa_return_url": "http://localhost/payment"}, "YOOKASSA_RETURN_URL"),
         ({"smtp_host": ""}, "SMTP or WhatsApp"),
+        ({"sentry_dsn": ""}, "SENTRY_DSN"),
         ({"photo_retention_days": 31}, "PHOTO_RETENTION_DAYS"),
         (
             {"generation_reservation_timeout_minutes": 2},

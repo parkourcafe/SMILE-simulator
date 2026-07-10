@@ -1,6 +1,8 @@
+import pytest
+
 from app.config import Settings
 from app.ml.providers import fal
-from app.ml.providers.base import ProviderConfig
+from app.ml.providers.base import InferenceProviderError, ProviderConfig
 
 
 async def test_fal_fill_uses_supported_payload_and_records_request_id(monkeypatch):
@@ -57,3 +59,36 @@ async def test_fal_fill_uses_supported_payload_and_records_request_id(monkeypatc
     assert captured["result_url"] == "https://files.example.test/result.png"
     assert result.request_id == "fal-request-1"
     assert result.cost_usd == 0.10
+
+
+async def test_fal_error_does_not_expose_provider_body(monkeypatch):
+    class Response:
+        status_code = 422
+        text = "provider echoed patient@example.test and secret"
+
+    class Client:
+        def __init__(self, *, timeout):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def post(self, _url, *, headers, json):
+            return Response()
+
+    monkeypatch.setattr(fal, "get_settings", lambda: Settings(fal_api_key="fal-test"))
+    monkeypatch.setattr(fal.httpx, "AsyncClient", Client)
+
+    with pytest.raises(InferenceProviderError) as exc:
+        await fal.FalFluxFillProvider().generate(
+            image=b"image",
+            mask=b"mask",
+            prompt="natural smile",
+            config=ProviderConfig(image_size=1024),
+        )
+
+    assert str(exc.value) == "inference_provider_rejected"
+    assert "patient@example.test" not in str(exc.value)
