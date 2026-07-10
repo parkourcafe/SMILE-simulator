@@ -157,6 +157,7 @@ def test_safe_production_configuration_passes_startup_guard(tmp_path):
             "GENERATION_RESERVATION_TIMEOUT_MINUTES",
         ),
         ({"rate_limit_per_minute": 0}, "RATE_LIMIT_PER_MINUTE"),
+        ({"max_request_body_bytes": 0}, "MAX_REQUEST_BODY_BYTES"),
     ],
 )
 def test_unsafe_production_configuration_is_rejected(tmp_path, overrides, message):

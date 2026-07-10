@@ -48,10 +48,11 @@ app.add_middleware(
         "Idempotency-Key",
         "X-Admin-Key",
         "X-Clinic-Key",
+        "X-Request-ID",
     ],
     expose_headers=["X-Request-ID"],
 )
-install_observability(app)
+install_observability(app, max_request_body_bytes=settings.max_request_body_bytes)
 
 app.include_router(generate.router, prefix="/v1")
 app.include_router(styles.router, prefix="/v1")

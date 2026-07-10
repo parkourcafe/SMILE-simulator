@@ -25,7 +25,7 @@ from app.ml.providers.base import (  # noqa: F401 (documents the contract)
     InferenceProviderError,
     ProviderConfig,
 )
-from app.observability import capture_exception
+from app.observability import capture_exception, get_request_id, request_id_context
 from app.routers.photo_consents import PHOTO_CONSENT_VERSION
 from app.schemas import (
     GenerateRequest,
@@ -133,77 +133,79 @@ async def _process(
     photo_path: str,
     style: dict,
     watermark: bool,
+    originating_request_id: str | None = None,
 ) -> None:
     """Run inference; the database trigger settles or releases reserved quota."""
-    sb = get_supabase()
-    try:
-        await sb.update(
-            "generations", filters={"id": f"eq.{generation_id}"}, patch={"status": "processing"}
-        )
-        photo_bytes = await sb.download(photo_path)
-        out = await run_pipeline(
-            photo_bytes=photo_bytes,
-            style_template=style["prompt_template"],
-            style_name=style["name"],
-            apply_watermark=watermark,
-        )
-        current = await sb.select(
-            "generations",
-            filters={"id": f"eq.{generation_id}"},
-            limit=1,
-        )
-        if not current or current[0].get("deleted_at"):
-            log.info("generation %s was deleted while processing", generation_id)
-            return
-
-        result_path = f"{user_id}/{generation_id}_result.png"
-        mask_path = f"{user_id}/{generation_id}_mask.png"
-        await sb.upload(result_path, out.result_image)
-        await sb.upload(mask_path, out.mask_image)
-        updated = await sb.update(
-            "generations",
-            filters={"id": f"eq.{generation_id}", "deleted_at": "is.null"},
-            patch={
-                "status": "completed",
-                "result_photo_url": result_path,
-                "mask_url": mask_path,
-                "prompt": out.prompt,
-                "inference_provider": out.provider,
-                "inference_cost_usd": out.cost_usd,
-                "inference_duration_ms": out.duration_ms,
-                "quality_score": out.quality_score,
-            },
-        )
-        if not updated:
-            await sb.remove_objects([result_path, mask_path])
-            log.info("discarded result for deleted generation %s", generation_id)
-            return
-    except Exception as exc:  # noqa: BLE001 - record failure, do not crash worker
-        capture_exception(exc)
-        log.error(
-            "generation_failed",
-            extra={
-                "event": "generation_failed",
-                "generation_id": generation_id,
-                "error_type": type(exc).__name__,
-            },
-        )
+    with request_id_context(originating_request_id):
+        sb = get_supabase()
         try:
             await sb.update(
+                "generations", filters={"id": f"eq.{generation_id}"}, patch={"status": "processing"}
+            )
+            photo_bytes = await sb.download(photo_path)
+            out = await run_pipeline(
+                photo_bytes=photo_bytes,
+                style_template=style["prompt_template"],
+                style_name=style["name"],
+                apply_watermark=watermark,
+            )
+            current = await sb.select(
+                "generations",
+                filters={"id": f"eq.{generation_id}"},
+                limit=1,
+            )
+            if not current or current[0].get("deleted_at"):
+                log.info("generation %s was deleted while processing", generation_id)
+                return
+
+            result_path = f"{user_id}/{generation_id}_result.png"
+            mask_path = f"{user_id}/{generation_id}_mask.png"
+            await sb.upload(result_path, out.result_image)
+            await sb.upload(mask_path, out.mask_image)
+            updated = await sb.update(
                 "generations",
                 filters={"id": f"eq.{generation_id}", "deleted_at": "is.null"},
-                patch={"status": "failed", "error_message": _generation_error_code(exc)},
-            )
-        except Exception as persistence_exc:  # noqa: BLE001 - watchdog releases the quota
-            capture_exception(persistence_exc)
-            log.error(
-                "generation_failure_persistence_failed",
-                extra={
-                    "event": "generation_failure_persistence_failed",
-                    "generation_id": generation_id,
-                    "error_type": type(persistence_exc).__name__,
+                patch={
+                    "status": "completed",
+                    "result_photo_url": result_path,
+                    "mask_url": mask_path,
+                    "prompt": out.prompt,
+                    "inference_provider": out.provider,
+                    "inference_cost_usd": out.cost_usd,
+                    "inference_duration_ms": out.duration_ms,
+                    "quality_score": out.quality_score,
                 },
             )
+            if not updated:
+                await sb.remove_objects([result_path, mask_path])
+                log.info("discarded result for deleted generation %s", generation_id)
+                return
+        except Exception as exc:  # noqa: BLE001 - record failure, do not crash worker
+            capture_exception(exc)
+            log.error(
+                "generation_failed",
+                extra={
+                    "event": "generation_failed",
+                    "generation_id": generation_id,
+                    "error_type": type(exc).__name__,
+                },
+            )
+            try:
+                await sb.update(
+                    "generations",
+                    filters={"id": f"eq.{generation_id}", "deleted_at": "is.null"},
+                    patch={"status": "failed", "error_message": _generation_error_code(exc)},
+                )
+            except Exception as persistence_exc:  # noqa: BLE001 - watchdog releases the quota
+                capture_exception(persistence_exc)
+                log.error(
+                    "generation_failure_persistence_failed",
+                    extra={
+                        "event": "generation_failure_persistence_failed",
+                        "generation_id": generation_id,
+                        "error_type": type(persistence_exc).__name__,
+                    },
+                )
 
 
 @router.post("", response_model=GenerationOut, status_code=202)
@@ -258,6 +260,7 @@ async def start_generation(
         body.original_photo_path,
         style,
         bool(row["has_watermark"]),
+        get_request_id(),
     )
     return _to_out(row)
 

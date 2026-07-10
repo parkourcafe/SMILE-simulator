@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 from app.config import Settings, get_settings
+from app.services.http_retry import get_with_retry
 
 YOOKASSA_API_BASE = "https://api.yookassa.ru/v3"
 
@@ -85,7 +86,10 @@ class YooKassaClient:
     async def get_payment(self, provider_payment_id: str) -> dict[str, Any]:
         try:
             async with httpx.AsyncClient(auth=self._auth(), timeout=15) as client:
-                response = await client.get(f"{YOOKASSA_API_BASE}/payments/{provider_payment_id}")
+                response = await get_with_retry(
+                    client,
+                    f"{YOOKASSA_API_BASE}/payments/{provider_payment_id}",
+                )
         except httpx.HTTPError as exc:
             raise YooKassaError("YooKassa get payment request failed") from exc
         if response.status_code >= 400:

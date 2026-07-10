@@ -14,6 +14,7 @@ import time
 import httpx
 
 from app.config import get_settings
+from app.services.http_retry import get_with_retry
 
 from .base import GenerationResult, InferenceProvider, InferenceProviderError, ProviderConfig
 
@@ -69,7 +70,7 @@ class FalFluxFillProvider(InferenceProvider):
                     result_url = body["images"][0]["url"]
                 except (IndexError, KeyError, TypeError, ValueError) as exc:
                     raise InferenceProviderError("inference_invalid_response") from exc
-                img_resp = await client.get(result_url)
+                img_resp = await get_with_retry(client, result_url)
                 if img_resp.status_code >= 400:
                     raise InferenceProviderError("inference_result_unavailable")
                 result_bytes = img_resp.content
