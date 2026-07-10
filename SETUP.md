@@ -70,11 +70,15 @@ Run `python -m app.jobs.retention --dry-run --limit 100` first. The live command
 removes original/result/mask objects through the Storage API, then clears their paths
 and records `photo_deleted_at`. A failed delete stays pending for the next run.
 
-## 2. Fal.ai (inference) — pay per use (~$0.05/MP)
+## 2. Fal.ai (inference) — pay per use ($0.05/MP, rounded up per image)
 
 1. Create a key at https://fal.ai/dashboard/keys
 2. `backend/.env`: `FAL_API_KEY=...` and set `MOCK_INFERENCE=false`
 3. Smoke test: run a generation; `/health` should report `"inference_provider":"fal_flux_pro_fill"`.
+
+At the current published rate, 1024x1024 is slightly above 1 MP and is billed as
+2 MP, so the repository estimates $0.10 per generation. Verify actual dashboard
+charges; vendor pricing can change.
 
 > NOTE: this repo's cloud env blocks outbound to `fal.run` (egress policy). Run the
 > Phase 0 spike locally (see `scripts/phase0/README.md`).

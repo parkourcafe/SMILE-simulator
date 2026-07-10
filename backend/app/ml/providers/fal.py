@@ -1,12 +1,14 @@
 """Fal.ai FLUX.1 [pro] Fill provider (primary, MVP).
 
-Endpoint: ``fal-ai/flux-pro/v1/fill``. Cost ~$0.05/megapixel. Latency 3–8s.
+Endpoint: ``fal-ai/flux-pro/v1/fill``. Published cost is $0.05/megapixel,
+rounded up to the next whole megapixel per image.
 Inputs are base64 data URIs (image + mask); output is a result image URL we fetch.
 """
 
 from __future__ import annotations
 
 import base64
+import math
 import time
 
 import httpx
@@ -45,8 +47,10 @@ class FalFluxFillProvider(InferenceProvider):
             "prompt": prompt,
             "image_url": _data_uri(image),
             "mask_url": _data_uri(mask),
-            "num_inference_steps": config.num_inference_steps,
-            "guidance_scale": config.guidance_scale,
+            "num_images": 1,
+            "output_format": "png",
+            "safety_tolerance": "2",
+            "enhance_prompt": False,
             **config.extra,
         }
         headers = {"Authorization": f"Key {self.settings.fal_api_key}"}
@@ -57,17 +61,20 @@ class FalFluxFillProvider(InferenceProvider):
             if resp.status_code >= 400:
                 raise RuntimeError(f"Fal.ai error {resp.status_code}: {resp.text}")
             body = resp.json()
+            request_id = body.get("request_id") or resp.headers.get("x-fal-request-id")
             result_url = body["images"][0]["url"]
             img_resp = await client.get(result_url)
             img_resp.raise_for_status()
             result_bytes = img_resp.content
         duration_ms = int((time.monotonic() - started) * 1000)
 
-        megapixels = (config.image_size * config.image_size) / 1_000_000
+        # Fal bills by rounding image pixels up to the next whole megapixel.
+        megapixels = math.ceil((config.image_size * config.image_size) / 1_000_000)
         cost = round(megapixels * COST_PER_MEGAPIXEL_USD, 4)
         return GenerationResult(
             image=result_bytes,
             cost_usd=cost,
             duration_ms=duration_ms,
             provider=self.name,
+            request_id=request_id,
         )

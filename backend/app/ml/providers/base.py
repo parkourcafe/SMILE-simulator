@@ -29,6 +29,7 @@ class GenerationResult:
     cost_usd: float
     duration_ms: int
     provider: str
+    request_id: str | None = None
 
 
 class InferenceProvider(ABC):
