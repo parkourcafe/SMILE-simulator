@@ -13,6 +13,7 @@ passes the object path here — the photo never transits the API body (architect
 from __future__ import annotations
 
 import logging
+from pathlib import PurePosixPath
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
@@ -21,10 +22,24 @@ from app.ml.pipeline import run_pipeline
 from app.ml.providers.base import ProviderConfig  # noqa: F401 (documents the contract)
 from app.schemas import GenerateRequest, GenerationListOut, GenerationOut, RetryRequest
 from app.services import quota
+from app.services.retention import purge_generation_photos
 from app.services.supabase_client import SupabaseClient, SupabaseError, get_supabase
 
 router = APIRouter(prefix="/api/generate", tags=["generation"])
 log = logging.getLogger("smile.generate")
+
+
+def _validate_owned_photo_path(path: str, user_id: str) -> None:
+    parts = PurePosixPath(path).parts
+    if (
+        not path
+        or path.startswith("/")
+        or "\\" in path
+        or len(parts) < 2
+        or parts[0] != user_id
+        or any(part in {".", ".."} for part in parts)
+    ):
+        raise HTTPException(status_code=422, detail="invalid_photo_path")
 
 
 async def _signed(sb: SupabaseClient, path: str | None) -> str | None:
@@ -74,13 +89,22 @@ async def _process(
             style_name=style["name"],
             apply_watermark=watermark,
         )
+        current = await sb.select(
+            "generations",
+            filters={"id": f"eq.{generation_id}"},
+            limit=1,
+        )
+        if not current or current[0].get("deleted_at"):
+            log.info("generation %s was deleted while processing", generation_id)
+            return
+
         result_path = f"{user_id}/{generation_id}_result.png"
         mask_path = f"{user_id}/{generation_id}_mask.png"
         await sb.upload(result_path, out.result_image)
         await sb.upload(mask_path, out.mask_image)
-        await sb.update(
+        updated = await sb.update(
             "generations",
-            filters={"id": f"eq.{generation_id}"},
+            filters={"id": f"eq.{generation_id}", "deleted_at": "is.null"},
             patch={
                 "status": "completed",
                 "result_photo_url": result_path,
@@ -92,12 +116,16 @@ async def _process(
                 "quality_score": out.quality_score,
             },
         )
+        if not updated:
+            await sb.remove_objects([result_path, mask_path])
+            log.info("discarded result for deleted generation %s", generation_id)
+            return
         await quota.consume(sb, user_id, decision)
     except Exception as exc:  # noqa: BLE001 - record failure, do not crash worker
         log.exception("generation %s failed", generation_id)
         await sb.update(
             "generations",
-            filters={"id": f"eq.{generation_id}"},
+            filters={"id": f"eq.{generation_id}", "deleted_at": "is.null"},
             patch={"status": "failed", "error_message": str(exc)[:500]},
         )
 
@@ -109,6 +137,7 @@ async def start_generation(
     user: CurrentUser = Depends(get_current_user),
 ) -> GenerationOut:
     sb = get_supabase()
+    _validate_owned_photo_path(body.original_photo_path, user.id)
     decision = await quota.evaluate(sb, user.id)
     if not decision.allowed:
         raise HTTPException(status_code=402, detail=decision.reason or "limit_reached")
@@ -147,7 +176,11 @@ async def history(
     sb = get_supabase()
     rows = await sb.select(
         "generations",
-        filters={"user_id": f"eq.{user.id}", "order": "created_at.desc"},
+        filters={
+            "user_id": f"eq.{user.id}",
+            "deleted_at": "is.null",
+            "order": "created_at.desc",
+        },
         limit=limit,
     )
     items = [
@@ -166,7 +199,11 @@ async def get_generation(
     generation_id: str, user: CurrentUser = Depends(get_current_user)
 ) -> GenerationOut:
     sb = get_supabase()
-    rows = await sb.select("generations", filters={"id": f"eq.{generation_id}"}, limit=1)
+    rows = await sb.select(
+        "generations",
+        filters={"id": f"eq.{generation_id}", "deleted_at": "is.null"},
+        limit=1,
+    )
     if not rows or rows[0]["user_id"] != user.id:
         raise HTTPException(status_code=404, detail="not_found")
     row = rows[0]
@@ -185,7 +222,11 @@ async def retry_generation(
     user: CurrentUser = Depends(get_current_user),
 ) -> GenerationOut:
     sb = get_supabase()
-    rows = await sb.select("generations", filters={"id": f"eq.{generation_id}"}, limit=1)
+    rows = await sb.select(
+        "generations",
+        filters={"id": f"eq.{generation_id}", "deleted_at": "is.null"},
+        limit=1,
+    )
     if not rows or rows[0]["user_id"] != user.id:
         raise HTTPException(status_code=404, detail="not_found")
     prev = rows[0]
@@ -202,9 +243,8 @@ async def delete_generation(
     rows = await sb.select("generations", filters={"id": f"eq.{generation_id}"}, limit=1)
     if not rows or rows[0]["user_id"] != user.id:
         raise HTTPException(status_code=404, detail="not_found")
-    await sb.update(
-        "generations",
-        filters={"id": f"eq.{generation_id}"},
-        patch={"status": "failed", "error_message": "deleted_by_user"},
-    )
-    # TODO(phase-1): hard-delete the storage objects + row once retention job lands.
+    try:
+        await purge_generation_photos(sb, rows[0], reason="deleted_by_user")
+    except SupabaseError as exc:
+        log.exception("photo deletion pending for generation %s", generation_id)
+        raise HTTPException(status_code=503, detail="photo_deletion_pending") from exc
