@@ -9,7 +9,7 @@ dependencies = [
     "pydantic>=2.6",
     "pydantic-settings>=2.2",
     "httpx>=0.27",
-    "pyjwt>=2.8",                        # verify Supabase JWTs (HS256, stdlib hmac)
+    "pyjwt[crypto]>=2.8",                # verify Supabase ES256/RS256 JWTs via JWKS
     "pillow>=10.2",                      # photo validation, resize, watermark
     "numpy>=1.26",                       # mask array ops
 ]

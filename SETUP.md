@@ -24,12 +24,21 @@ A dedicated project is already provisioned: `htclwrotnmhtbrdisqcu`
 Put these in `backend/.env` (copy from `.env.example`):
 
 - `SUPABASE_URL` — Project Settings → API → Project URL
-- `SUPABASE_SERVICE_ROLE_KEY` — Project Settings → API → service_role key (SECRET — server only)
-- `SUPABASE_JWT_SECRET` — Project Settings → API → JWT Secret (only needed when `MOCK_AUTH=false`)
-- `SUPABASE_ANON_KEY` — for the Flutter app (`--dart-define SUPABASE_ANON_KEY=...`)
+- `SUPABASE_SECRET_KEY` — current server key (SECRET, bypasses RLS, backend only)
+- `SUPABASE_PUBLISHABLE_KEY` — public key for Flutter/web clients
+- `SUPABASE_JWT_SECRET` — legacy HS256 fallback only; current ES256/RS256 user tokens
+  are verified against the project's public JWKS endpoint
+
+`SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_ANON_KEY` remain temporary legacy aliases.
+Prefer the current secret/publishable keys and deactivate legacy keys after every
+deployed client and backend has migrated.
 
 To recreate from scratch elsewhere: apply `supabase/migrations/*.sql` in order,
 then `supabase/seed_dev.sql` (10 test clinics). `auth.users` is Supabase-provided.
+
+For production, also set a random `ADMIN_API_KEY` of at least 32 characters and an
+explicit comma-separated `CORS_ALLOWED_ORIGINS`. Startup fails if production uses
+mock auth, a default admin key, missing Supabase keys, or wildcard CORS.
 
 ## 2. Fal.ai (inference) — pay per use (~$0.05/MP)
 

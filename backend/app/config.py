@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     # App
     app_env: str = "development"
     api_base_url: str = "http://localhost:8000"
+    cors_allowed_origins: str = (
+        "http://localhost:3000,http://localhost:8080,https://zubilook.com,https://www.zubilook.com"
+    )
 
     # Mock flags (v1.1). Default TRUE so a fresh clone runs the whole product with
     # zero external credentials. Flip to false once real keys are in .env (see SETUP.md).
@@ -22,6 +25,10 @@ class Settings(BaseSettings):
 
     # Supabase
     supabase_url: str = ""
+    supabase_publishable_key: str = ""
+    supabase_secret_key: str = ""
+    # Legacy key names remain supported during migration to Supabase's current
+    # publishable/secret key system.
     supabase_anon_key: str = ""
     supabase_service_role_key: str = ""
     supabase_jwt_secret: str = ""
@@ -72,6 +79,64 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() in {"production", "prod"}
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return list(
+            dict.fromkeys(
+                origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()
+            )
+        )
+
+    @property
+    def supabase_public_key(self) -> str:
+        return self.supabase_publishable_key or self.supabase_anon_key
+
+    @property
+    def supabase_server_key(self) -> str:
+        return self.supabase_secret_key or self.supabase_service_role_key
+
+    @property
+    def supabase_configured(self) -> bool:
+        return bool(self.supabase_url and self.supabase_server_key)
+
+    @property
+    def supabase_auth_issuer(self) -> str:
+        return f"{self.supabase_url.rstrip('/')}/auth/v1"
+
+    def assert_safe_startup(self) -> None:
+        """Refuse a production process that would expose mock or default credentials."""
+        if not self.is_production:
+            return
+
+        errors: list[str] = []
+        if self.mock_auth:
+            errors.append("MOCK_AUTH must be false")
+        if not self.supabase_url:
+            errors.append("SUPABASE_URL is required")
+        if not self.supabase_public_key:
+            errors.append("SUPABASE_PUBLISHABLE_KEY is required")
+        if not self.supabase_server_key:
+            errors.append("SUPABASE_SECRET_KEY is required")
+        if (
+            not self.admin_api_key
+            or self.admin_api_key == "change-me"
+            or len(self.admin_api_key) < 32
+        ):
+            errors.append("ADMIN_API_KEY must be a non-default value of at least 32 characters")
+        if "*" in self.cors_origins:
+            errors.append("CORS_ALLOWED_ORIGINS cannot contain '*' in production")
+        if any("localhost" in origin or "127.0.0.1" in origin for origin in self.cors_origins):
+            errors.append("CORS_ALLOWED_ORIGINS cannot contain local origins in production")
+        if not self.mock_inference and not self.fal_api_key:
+            errors.append("FAL_API_KEY is required when MOCK_INFERENCE=false")
+        if not self.mock_payments and not (self.yookassa_shop_id and self.yookassa_secret_key):
+            errors.append("YooKassa credentials are required when MOCK_PAYMENTS=false")
+        if not 1 <= self.photo_retention_days <= 30:
+            errors.append("PHOTO_RETENTION_DAYS must be between 1 and 30")
+
+        if errors:
+            raise RuntimeError("Unsafe production configuration: " + "; ".join(errors))
 
 
 @lru_cache
