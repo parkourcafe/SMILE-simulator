@@ -20,9 +20,16 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from app.deps import CurrentUser, get_current_user
 from app.ml.pipeline import run_pipeline
 from app.ml.providers.base import ProviderConfig  # noqa: F401 (documents the contract)
-from app.schemas import GenerateRequest, GenerationListOut, GenerationOut, RetryRequest
+from app.schemas import (
+    GenerateRequest,
+    GenerationListOut,
+    GenerationOut,
+    PhotoDeletionOut,
+    PhotoDeletionSummary,
+    RetryRequest,
+)
 from app.services import quota
-from app.services.retention import purge_generation_photos
+from app.services.retention import generation_photo_paths, purge_generation_photos
 from app.services.supabase_client import SupabaseClient, SupabaseError, get_supabase
 
 router = APIRouter(prefix="/api/generate", tags=["generation"])
@@ -235,16 +242,81 @@ async def retry_generation(
     return await start_generation(req, background, user)
 
 
-@router.delete("/{generation_id}", status_code=204)
+async def _purge_with_receipt(sb: SupabaseClient, row: dict) -> PhotoDeletionOut:
+    object_count = len(generation_photo_paths(row))
+    try:
+        outcome = await purge_generation_photos(sb, row, reason="deleted_by_user")
+        return PhotoDeletionOut(
+            generation_id=row["id"],
+            status="deleted",
+            object_count=outcome.object_count,
+        )
+    except SupabaseError:
+        try:
+            current = await sb.select(
+                "generations",
+                filters={"id": f"eq.{row['id']}"},
+                limit=1,
+            )
+        except SupabaseError:
+            raise
+        if current and current[0].get("photo_deletion_pending"):
+            return PhotoDeletionOut(
+                generation_id=row["id"],
+                status="pending",
+                object_count=object_count,
+            )
+        raise
+
+
+@router.delete("", response_model=PhotoDeletionSummary)
+async def delete_all_generation_photos(
+    user: CurrentUser = Depends(get_current_user),
+) -> PhotoDeletionSummary:
+    sb = get_supabase()
+    rows = await sb.select(
+        "generations",
+        filters={
+            "user_id": f"eq.{user.id}",
+            "or": "(deleted_at.is.null,photo_deletion_pending.eq.true)",
+        },
+    )
+    deleted = 0
+    pending = 0
+    failed = 0
+    objects_requested = 0
+    for row in rows:
+        objects_requested += len(generation_photo_paths(row))
+        try:
+            receipt = await _purge_with_receipt(sb, row)
+        except SupabaseError:
+            failed += 1
+            log.exception("photo deletion could not be recorded for generation %s", row["id"])
+            continue
+        if receipt.status == "deleted":
+            deleted += 1
+        else:
+            pending += 1
+
+    return PhotoDeletionSummary(
+        requested=len(rows),
+        deleted=deleted,
+        pending=pending,
+        failed=failed,
+        objects_requested=objects_requested,
+    )
+
+
+@router.delete("/{generation_id}", response_model=PhotoDeletionOut)
 async def delete_generation(
     generation_id: str, user: CurrentUser = Depends(get_current_user)
-) -> None:
+) -> PhotoDeletionOut:
     sb = get_supabase()
     rows = await sb.select("generations", filters={"id": f"eq.{generation_id}"}, limit=1)
     if not rows or rows[0]["user_id"] != user.id:
         raise HTTPException(status_code=404, detail="not_found")
     try:
-        await purge_generation_photos(sb, rows[0], reason="deleted_by_user")
+        return await _purge_with_receipt(sb, rows[0])
     except SupabaseError as exc:
-        log.exception("photo deletion pending for generation %s", generation_id)
-        raise HTTPException(status_code=503, detail="photo_deletion_pending") from exc
+        log.exception("photo deletion could not be recorded for generation %s", generation_id)
+        raise HTTPException(status_code=503, detail="photo_deletion_unconfirmed") from exc

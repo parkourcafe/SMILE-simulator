@@ -10,6 +10,7 @@ import '../../providers/generation_flow.dart';
 import '../../providers/providers.dart';
 import '../../services/analytics.dart';
 import '../../widgets/before_after_slider.dart';
+import '../privacy/photo_deletion_ui.dart';
 
 /// Result screen: before/after slider + cost anchor + actions.
 ///
@@ -88,6 +89,11 @@ class ResultScreen extends ConsumerWidget {
                       'Ещё раз',
                       () => _onRetry(context, ref),
                     ),
+                    _action(
+                      Icons.delete_outline,
+                      'Удалить',
+                      () => _onDelete(context, ref, generationId),
+                    ),
                     FilledButton.icon(
                       icon: const Icon(Icons.location_on_outlined),
                       label: const Text('Найти клинику'),
@@ -129,6 +135,37 @@ class ResultScreen extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Сохранено в галерею')),
       );
+    }
+  }
+
+  Future<void> _onDelete(
+    BuildContext context,
+    WidgetRef ref,
+    String id,
+  ) async {
+    final confirmed = await confirmPhotoDeletion(context);
+    if (!confirmed || !context.mounted) return;
+
+    try {
+      final receipt = await ref.read(apiClientProvider).deleteGeneration(id);
+      if (!context.mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      ref.read(generationFlowProvider.notifier).reset();
+      ref.invalidate(historyProvider);
+      if (context.mounted) context.go('/home');
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            photoDeletionMessage(receipt),
+          ),
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось подтвердить удаление. Повторите позже.')),
+        );
+      }
     }
   }
 

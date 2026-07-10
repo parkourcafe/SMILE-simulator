@@ -6,6 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smile_simulator/src/api/api_client.dart';
 
 class _RecordingAdapter implements HttpClientAdapter {
+  _RecordingAdapter({required this.body, this.statusCode = 200});
+
+  final Map<String, dynamic> body;
+  final int statusCode;
   late RequestOptions request;
 
   @override
@@ -16,12 +20,8 @@ class _RecordingAdapter implements HttpClientAdapter {
   ) async {
     request = options;
     return ResponseBody.fromString(
-      jsonEncode({
-        'id': '57adb7eb-9b14-4cc8-b977-bc7a39b07553',
-        'clinic_id': '4df30f8b-844e-454a-a677-c703a5ad89d2',
-        'status': 'notified',
-      }),
-      201,
+      jsonEncode(body),
+      statusCode,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },
@@ -34,7 +34,14 @@ class _RecordingAdapter implements HttpClientAdapter {
 
 void main() {
   test('submitLead sends consent and a stable idempotency key', () async {
-    final adapter = _RecordingAdapter();
+    final adapter = _RecordingAdapter(
+      statusCode: 201,
+      body: {
+        'id': '57adb7eb-9b14-4cc8-b977-bc7a39b07553',
+        'clinic_id': '4df30f8b-844e-454a-a677-c703a5ad89d2',
+        'status': 'notified',
+      },
+    );
     final dio = Dio(BaseOptions(baseUrl: 'https://api.example.test/v1'));
     dio.httpClientAdapter = adapter;
     final client = ApiClient(
@@ -73,5 +80,55 @@ void main() {
     expect(receipt.id, '57adb7eb-9b14-4cc8-b977-bc7a39b07553');
     expect(receipt.clinicId, '4df30f8b-844e-454a-a677-c703a5ad89d2');
     expect(receipt.status, 'notified');
+  });
+
+  test('deleteGeneration returns a verified pending receipt', () async {
+    final adapter = _RecordingAdapter(
+      body: {
+        'generation_id': '394553b3-9110-44ec-8f2b-6a8bcf3dc778',
+        'status': 'pending',
+        'object_count': 3,
+      },
+    );
+    final dio = Dio(BaseOptions(baseUrl: 'https://api.example.test/v1'));
+    dio.httpClientAdapter = adapter;
+    final client = ApiClient(dio: dio);
+
+    final receipt = await client.deleteGeneration(
+      '394553b3-9110-44ec-8f2b-6a8bcf3dc778',
+    );
+
+    expect(adapter.request.method, 'DELETE');
+    expect(
+      adapter.request.path,
+      '/api/generate/394553b3-9110-44ec-8f2b-6a8bcf3dc778',
+    );
+    expect(receipt.isPending, isTrue);
+    expect(receipt.objectCount, 3);
+  });
+
+  test('deleteAllGenerationPhotos parses partial outcomes', () async {
+    final adapter = _RecordingAdapter(
+      body: {
+        'requested': 4,
+        'deleted': 2,
+        'pending': 1,
+        'failed': 1,
+        'objects_requested': 12,
+      },
+    );
+    final dio = Dio(BaseOptions(baseUrl: 'https://api.example.test/v1'));
+    dio.httpClientAdapter = adapter;
+    final client = ApiClient(dio: dio);
+
+    final summary = await client.deleteAllGenerationPhotos();
+
+    expect(adapter.request.method, 'DELETE');
+    expect(adapter.request.path, '/api/generate');
+    expect(summary.requested, 4);
+    expect(summary.deleted, 2);
+    expect(summary.pending, 1);
+    expect(summary.failed, 1);
+    expect(summary.objectsRequested, 12);
   });
 }
