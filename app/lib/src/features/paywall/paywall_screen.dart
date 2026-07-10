@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../api/models.dart';
 import '../../providers/entitlements.dart';
@@ -16,34 +18,133 @@ class PaywallScreen extends ConsumerStatefulWidget {
   ConsumerState<PaywallScreen> createState() => _PaywallScreenState();
 }
 
-class _PaywallScreenState extends ConsumerState<PaywallScreen> {
+class _PaywallScreenState extends ConsumerState<PaywallScreen>
+    with WidgetsBindingObserver {
   final _controller = PageController();
+  final _idempotencyKeys = <String, String>{};
   int _page = 0;
   bool _purchasing = false;
+  bool _checkingPayment = false;
+  String? _pendingPaymentId;
+  String? _pendingPackType;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _pendingPaymentId != null) {
+      _checkPayment();
+    }
+  }
+
+  Future<bool> _refreshEntitlementsAndClose() async {
+    ref.invalidate(entitlementsSyncProvider);
+    try {
+      await ref.read(entitlementsSyncProvider.future);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Оплата подтверждена, но баланс пока не обновился. Проверьте ещё раз.',
+            ),
+          ),
+        );
+      }
+      return false;
+    }
+    if (!mounted) return false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Оплата подтверждена. Пакет активирован.')),
+    );
+    context.pop();
+    return true;
+  }
+
+  Future<void> _checkPayment() async {
+    final paymentId = _pendingPaymentId;
+    if (paymentId == null || _checkingPayment) return;
+    setState(() => _checkingPayment = true);
+    try {
+      final status = await ref.read(apiClientProvider).paymentStatus(paymentId);
+      if (status.isCompleted) {
+        final refreshed = await _refreshEntitlementsAndClose();
+        if (refreshed) {
+          _pendingPaymentId = null;
+          _pendingPackType = null;
+        }
+      } else if (status.isFailed) {
+        if (_pendingPackType != null) _idempotencyKeys.remove(_pendingPackType);
+        _pendingPaymentId = null;
+        _pendingPackType = null;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Платёж не прошёл. Попробуйте снова.')),
+          );
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось проверить платёж.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _checkingPayment = false);
+    }
   }
 
   Future<void> _purchase(PackOption pack) async {
     setState(() => _purchasing = true);
     try {
       final api = ref.read(apiClientProvider);
-      // In mock mode the server auto-succeeds and activates the pack; we mirror the
-      // credit grant locally so the UI unlocks immediately.
-      await api.purchase(packType: pack.packType, provider: 'yookassa');
-      ref.read(entitlementsProvider.notifier).grantPack(pack.generationsTotal);
+      final key = _idempotencyKeys.putIfAbsent(
+        pack.packType,
+        () => const Uuid().v4(),
+      );
+      final receipt = await api.purchase(
+        packType: pack.packType,
+        provider: 'yookassa',
+        idempotencyKey: key,
+      );
+      if (receipt.isCompleted) {
+        await _refreshEntitlementsAndClose();
+        return;
+      }
+      if (receipt.isFailed || receipt.paymentUrl == null) {
+        _idempotencyKeys.remove(pack.packType);
+        throw StateError('payment_not_available');
+      }
+      final opened = await launchUrl(
+        Uri.parse(receipt.paymentUrl!),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!opened) throw StateError('payment_url_not_opened');
+      _pendingPaymentId = receipt.paymentId;
+      _pendingPackType = pack.packType;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Завершите оплату в открывшемся окне, затем вернитесь.'),
+          ),
+        );
+      }
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Пакет «${pack.title}» активирован')),
+        const SnackBar(content: Text('Не удалось начать оплату. Повторите позже.')),
       );
-      context.pop();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Не удалось купить: $e')));
     } finally {
       if (mounted) setState(() => _purchasing = false);
     }
@@ -64,7 +165,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               curve: Curves.easeOut,
             );
           }),
-          _PlansPage(purchasing: _purchasing, onBuy: _purchase),
+          _PlansPage(
+            purchasing: _purchasing,
+            checkingPayment: _checkingPayment,
+            hasPendingPayment: _pendingPaymentId != null,
+            onBuy: _purchase,
+            onCheckPayment: _checkPayment,
+          ),
         ],
       ),
       bottomNavigationBar: Padding(
@@ -141,10 +248,19 @@ class _ValuePage extends StatelessWidget {
 }
 
 class _PlansPage extends ConsumerWidget {
-  const _PlansPage({required this.purchasing, required this.onBuy});
+  const _PlansPage({
+    required this.purchasing,
+    required this.checkingPayment,
+    required this.hasPendingPayment,
+    required this.onBuy,
+    required this.onCheckPayment,
+  });
 
   final bool purchasing;
+  final bool checkingPayment;
+  final bool hasPendingPayment;
   final void Function(PackOption) onBuy;
+  final VoidCallback onCheckPayment;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -162,7 +278,7 @@ class _PlansPage extends ConsumerWidget {
                   '${p.priceAmount.toStringAsFixed(0)} ${p.priceCurrency}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                onTap: purchasing ? null : () => onBuy(p),
+                onTap: (purchasing || hasPendingPayment) ? null : () => onBuy(p),
               ),
             ),
           if (purchasing)
@@ -170,10 +286,21 @@ class _PlansPage extends ConsumerWidget {
               padding: EdgeInsets.all(16),
               child: Center(child: CircularProgressIndicator()),
             ),
+          if (hasPendingPayment)
+            TextButton.icon(
+              onPressed: checkingPayment ? null : onCheckPayment,
+              icon: checkingPayment
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh),
+              label: const Text('Проверить оплату'),
+            ),
         ],
       ),
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Не удалось загрузить пакеты\n$e')),
+      error: (_, __) => const Center(child: Text('Не удалось загрузить пакеты')),
     );
   }
 }

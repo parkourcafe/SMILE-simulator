@@ -5,11 +5,15 @@ declare
   free_user constant uuid := '00000000-0000-0000-0000-000000000101';
   failed_user constant uuid := '00000000-0000-0000-0000-000000000102';
   pack_user constant uuid := '00000000-0000-0000-0000-000000000103';
+  payment_user constant uuid := '00000000-0000-0000-0000-000000000105';
   free_consent constant uuid := '10000000-0000-0000-0000-000000000101';
   failed_consent constant uuid := '10000000-0000-0000-0000-000000000102';
   pack_consent constant uuid := '10000000-0000-0000-0000-000000000103';
   expired_pack constant uuid := '20000000-0000-0000-0000-000000000101';
   active_pack constant uuid := '20000000-0000-0000-0000-000000000102';
+  payment constant uuid := '30000000-0000-0000-0000-000000000105';
+  payment_key constant uuid := '40000000-0000-0000-0000-000000000105';
+  provider_payment constant text := '2fdd9000-000f-5000-a000-123456789abc';
   style uuid;
   result jsonb;
   generation uuid;
@@ -22,9 +26,10 @@ begin
   insert into auth.users (id, phone) values
     (free_user, '+70000000101'),
     (failed_user, '+70000000102'),
-    (pack_user, '+70000000103');
+    (pack_user, '+70000000103'),
+    (payment_user, '+70000000105');
 
-  if (select count(*) from public.users where id in (free_user, failed_user, pack_user)) <> 3 then
+  if (select count(*) from public.users where id in (free_user, failed_user, pack_user, payment_user)) <> 4 then
     raise exception 'auth user provisioning trigger did not backfill profiles';
   end if;
 
@@ -130,6 +135,41 @@ begin
   end if;
   if (select generations_used from public.packs where id = active_pack) <> 1 then
     raise exception 'rate-limited request consumed a pack credit';
+  end if;
+
+  insert into public.payments (
+    id, user_id, amount, currency, provider, provider_payment_id, status,
+    pack_type, idempotency_key, provider_status
+  ) values (
+    payment, payment_user, 149.00, 'RUB', 'yookassa', provider_payment,
+    'pending', 'mini', payment_key, null
+  );
+
+  result := public.activate_yookassa_payment(payment, provider_payment);
+  if result->>'reason' <> 'payment_not_verified' then
+    raise exception 'unverified payment was activated: %', result;
+  end if;
+
+  update public.payments
+  set provider_status = 'succeeded', status = 'failed'
+  where id = payment;
+  result := public.activate_yookassa_payment(payment, provider_payment);
+  if result->>'reason' <> 'payment_not_pending' then
+    raise exception 'failed payment was activated: %', result;
+  end if;
+
+  update public.payments set status = 'pending' where id = payment;
+  result := public.activate_yookassa_payment(payment, provider_payment);
+  if result->>'activated' <> 'true' then
+    raise exception 'verified payment did not activate a pack: %', result;
+  end if;
+  result := public.activate_yookassa_payment(payment, provider_payment);
+  if result->>'duplicate' <> 'true' then
+    raise exception 'duplicate payment activation was not idempotent: %', result;
+  end if;
+  if (select status from public.payments where id = payment) <> 'completed' or
+     (select count(*) from public.packs where payment_id = payment) <> 1 then
+    raise exception 'payment and pack linkage is inconsistent';
   end if;
 
   if (select count(*) from pg_policies where schemaname = 'storage' and policyname like 'photos_consented_%') <> 2 then

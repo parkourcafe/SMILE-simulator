@@ -114,10 +114,27 @@ class ApiClient {
         .toList();
   }
 
-  Future<String?> purchase({required String packType, required String provider}) async {
-    final resp = await _dio.post('/api/packs/purchase',
-        data: {'pack_type': packType, 'provider': provider});
-    return resp.data['payment_url'] as String?;
+  Future<EntitlementSnapshot> entitlements() async {
+    final resp = await _dio.get('/api/packs/entitlements');
+    return EntitlementSnapshot.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  Future<PurchaseReceipt> purchase({
+    required String packType,
+    required String provider,
+    required String idempotencyKey,
+  }) async {
+    final resp = await _dio.post(
+      '/api/packs/purchase',
+      data: {'pack_type': packType, 'provider': provider},
+      options: Options(headers: {'Idempotency-Key': idempotencyKey}),
+    );
+    return PurchaseReceipt.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  Future<PaymentStatusReceipt> paymentStatus(String paymentId) async {
+    final resp = await _dio.get('/api/packs/payments/$paymentId');
+    return PaymentStatusReceipt.fromJson(resp.data as Map<String, dynamic>);
   }
 
   // --- Price estimates (cost anchor) ---------------------------------------

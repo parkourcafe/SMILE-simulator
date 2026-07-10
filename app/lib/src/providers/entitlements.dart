@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Free tier = 1 generation (CLAUDE.md locked decision). This is a client-side
 /// mirror for UX gating; the server enforces the real limit (quota service).
 class Entitlements {
-  const Entitlements({this.freeRemaining = 1, this.packRemaining = 0});
+  const Entitlements({this.freeRemaining = 0, this.packRemaining = 0});
 
   final int freeRemaining;
   final int packRemaining;
@@ -35,9 +35,12 @@ class EntitlementsNotifier extends StateNotifier<Entitlements> {
     }
   }
 
-  /// Grant credits after a successful pack purchase.
-  void grantPack(int generations) =>
-      state = state.copyWith(packRemaining: state.packRemaining + generations);
+  void replace({required int freeRemaining, required int packRemaining}) {
+    state = Entitlements(
+      freeRemaining: freeRemaining,
+      packRemaining: packRemaining,
+    );
+  }
 }
 
 final entitlementsProvider =

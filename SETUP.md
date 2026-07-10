@@ -20,10 +20,11 @@ need Supabase — see step 1.
 
 A dedicated project URL is configured as `htclwrotnmhtbrdisqcu`
 (`https://htclwrotnmhtbrdisqcu.supabase.co`). Do not assume its migration state:
-verify and apply numbered migrations `0001` through `0013` in order before deploy.
+verify and apply numbered migrations `0001` through `0014` in order before deploy.
 Do not skip `0011_auth_user_provisioning.sql` or
 `0012_photo_processing_consent.sql`; `0013_atomic_generation_quota.sql` is required
-before deploying the backend version that calls the reservation RPC.
+before deploying the backend version that calls the reservation RPC. Migration
+`0014_yookassa_payments.sql` is required before enabling real pack checkout.
 
 Put these in `backend/.env` (copy from `.env.example`):
 
@@ -146,7 +147,7 @@ SHA-256 checksum. `APP_ENV=production` refuses to start with any mock service, a
 missing/changed model, missing Supabase/Fal.ai/YooKassa credentials, default admin
 key, unsafe CORS, or no clinic notification channel.
 
-Promotion to production is allowed only after migrations `0008`–`0013`, Phase 0 GO,
+Promotion to production is allowed only after migrations `0008`–`0014`, Phase 0 GO,
 real OTP, one approved clinic, legal publication, and staging smoke tests. Roll back
 by selecting the previous successful Railway deployment; rotate any credential that
 appeared in logs or was shared outside the Railway secret store.
@@ -154,9 +155,28 @@ appeared in logs or was shared outside the Railway secret store.
 ## 3. YooKassa (payments RU)
 
 1. Create a test shop → get `YOOKASSA_SHOP_ID` + `YOOKASSA_SECRET_KEY`.
-2. `backend/.env`: fill both, set `MOCK_PAYMENTS=false`.
-3. Configure the webhook URL → `POST {API_BASE_URL}/v1/api/webhooks/yookassa`.
-   The webhook handler (HMAC verify + idempotency) is REAL even in mock mode.
+2. Set `YOOKASSA_RETURN_URL` to a public HTTPS page controlled by ZubiLook.
+3. Apply `0014_yookassa_payments.sql`, then fill the credentials and set
+   `MOCK_PAYMENTS=false` in Railway staging.
+4. In the YooKassa dashboard, subscribe the public HTTPS endpoint
+   `POST {API_BASE_URL}/v1/api/webhooks/yookassa` to `payment.succeeded` and
+   `payment.canceled`.
+5. Create one test payment. Verify redirect, pending local row, server-to-server GET
+   verification, exactly one completed payment, and exactly one linked pack after the
+   webhook. Replay the same notification and confirm no second pack is created.
+6. Confirm the shop's receipt/fiscalization settings with the merchant's accountant or
+   payment specialist before real charges; do not infer that requirement from test mode.
+
+The implementation follows YooKassa's official server-side redirect flow with HTTP
+Basic Auth and `Idempotence-Key`. Incoming notifications are not trusted directly:
+the backend retrieves the current payment object from YooKassa and matches payment ID,
+status, paid flag, amount, currency, user, and pack metadata before atomic activation.
+
+Official references:
+
+- https://yookassa.ru/developers/payment-acceptance/getting-started/quick-start
+- https://yookassa.ru/developers/using-api/webhooks
+- https://yookassa.ru/developers/using-api/response-handling/recommendations
 
 ## 4. SMTP (clinic + branded patient email)
 

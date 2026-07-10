@@ -121,6 +121,7 @@ def _otherwise_safe_production_settings(model_path: Path, **overrides) -> Settin
         "mediapipe_face_model_sha256": hashlib.sha256(model_path.read_bytes()).hexdigest(),
         "yookassa_shop_id": "shop_test",
         "yookassa_secret_key": "payment_test",
+        "yookassa_return_url": "https://www.zubilook.com/?payment=return",
         "smtp_host": "smtp.example.test",
         "admin_api_key": "a" * 32,
         "cors_allowed_origins": "https://www.zubilook.com",
@@ -146,6 +147,7 @@ def test_safe_production_configuration_passes_startup_guard(tmp_path):
         ({"fal_api_key": ""}, "FAL_API_KEY"),
         ({"mediapipe_face_model_sha256": "wrong"}, "MEDIAPIPE_FACE_MODEL"),
         ({"yookassa_secret_key": ""}, "YooKassa"),
+        ({"yookassa_return_url": "http://localhost/payment"}, "YOOKASSA_RETURN_URL"),
         ({"smtp_host": ""}, "SMTP or WhatsApp"),
         ({"photo_retention_days": 31}, "PHOTO_RETENTION_DAYS"),
         (

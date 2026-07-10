@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   database:
-    name: Database — migrations + atomic quota
+    name: Database — migrations + invariants
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -40,7 +40,7 @@ jobs:
           for migration in supabase/migrations/*.sql; do
             psql --set ON_ERROR_STOP=1 --file "$migration"
           done
-      - name: Verify quota and consent behavior
+      - name: Verify consent, quota, and payment behavior
         run: psql --set ON_ERROR_STOP=1 --file scripts/ci/verify_atomic_quota.sql
       - name: Verify concurrent reservations
         run: bash scripts/ci/verify_quota_concurrency.sh

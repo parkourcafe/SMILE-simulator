@@ -90,6 +90,10 @@ class SupabaseClient:
             ("photo_processing_consents", "id,photo_object_path"),
             ("leads", "id,idempotency_key,transfer_consent_given"),
             ("clinic_api_keys", "id,key_hash,status"),
+            (
+                "payments",
+                "id,pack_type,idempotency_key,provider_status,confirmation_url",
+            ),
         )
         try:
             async with httpx.AsyncClient(timeout=5) as client:
@@ -119,6 +123,19 @@ class SupabaseClient:
                     raise SupabaseError(
                         "readiness schema check failed for reserve_generation_quota: "
                         f"{rpc_response.status_code}"
+                    )
+                payment_rpc_response = await client.post(
+                    f"{self._rest_base}/rpc/activate_yookassa_payment",
+                    headers=self._headers(),
+                    json={
+                        "p_payment_id": zero_uuid,
+                        "p_provider_payment_id": "readiness_probe",
+                    },
+                )
+                if payment_rpc_response.status_code >= 400:
+                    raise SupabaseError(
+                        "readiness schema check failed for activate_yookassa_payment: "
+                        f"{payment_rpc_response.status_code}"
                     )
         except httpx.HTTPError as exc:
             raise SupabaseError("readiness check could not reach Supabase") from exc

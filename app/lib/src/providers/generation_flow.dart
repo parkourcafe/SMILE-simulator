@@ -109,6 +109,7 @@ class GenerationFlow extends StateNotifier<GenerationFlowState> {
         // A successful generation spends one credit (free tier first). This is what
         // makes the NEXT attempt action-lock into the paywall.
         _ref.read(entitlementsProvider.notifier).consumeOne();
+        _ref.invalidate(entitlementsSyncProvider);
       }
       return gen.id;
     } catch (e) {
