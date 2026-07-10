@@ -117,19 +117,31 @@ class ApiClient {
         .toList();
   }
 
-  Future<void> submitLead({
+  Future<LeadReceipt> submitLead({
     required String clinicId,
     required String generationId,
     required String name,
     required String phone,
+    required bool consentGiven,
+    required String consentVersion,
+    required String consentLocale,
+    required String idempotencyKey,
     String? preferredTime,
   }) async {
-    await _dio.post('/api/leads', data: {
-      'clinic_id': clinicId,
-      'generation_id': generationId,
-      'name': name,
-      'phone': phone,
-      'preferred_time': preferredTime,
-    });
+    final resp = await _dio.post(
+      '/api/leads',
+      data: {
+        'clinic_id': clinicId,
+        'generation_id': generationId,
+        'name': name,
+        'phone': phone,
+        'preferred_time': preferredTime,
+        'consent_given': consentGiven,
+        'consent_version': consentVersion,
+        'consent_locale': consentLocale,
+      },
+      options: Options(headers: {'Idempotency-Key': idempotencyKey}),
+    );
+    return LeadReceipt.fromJson(resp.data as Map<String, dynamic>);
   }
 }

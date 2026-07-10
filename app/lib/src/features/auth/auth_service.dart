@@ -57,6 +57,11 @@ class AuthService extends ChangeNotifier {
 
   bool get isMockMode => _mockMode;
 
+  String? get phone {
+    if (_mockMode) return _mockPhone;
+    return _client!.auth.currentUser?.phone;
+  }
+
   bool get isSignedIn {
     if (_mockMode) return _mockSignedIn;
     final session = _client!.auth.currentSession;

@@ -54,3 +54,8 @@ final priceEstimatesProvider =
         .priceEstimates(city: key.city, styleId: key.styleId);
   },
 );
+
+/// Active partner clinics for a selected city.
+final clinicsProvider = FutureProvider.family<List<Clinic>, String>((ref, city) {
+  return ref.watch(apiClientProvider).clinics(city: city);
+});
