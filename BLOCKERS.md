@@ -46,7 +46,7 @@ Format: symptom → attempts → hypothesis → status.
 ## 6. Supabase connector and production keys are not available in this session
 - **Symptom:** remote migration history, grants, and form rows cannot be inspected;
   no public/publishable or server key is present in the current environment.
-- **Impact:** migrations `0008`–`0012`, website forms, Auth profile provisioning, and
-  the photo-consent receipt cannot be marked production-ready.
+- **Impact:** migrations `0008`–`0013`, website forms, Auth profile provisioning,
+  photo-consent receipts, and atomic generation quota cannot be marked production-ready.
 - **Status:** OPEN (external). Selena will reconnect the Supabase connector; then apply
   migrations in order and run the positive and negative smoke checks from the handoff.

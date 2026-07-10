@@ -10,7 +10,6 @@ from app.config import Settings
 from app.jobs.retention import run_retention
 from app.routers import generate
 from app.routers.generate import _validate_owned_photo_path
-from app.services.quota import QuotaDecision
 from app.services.retention import generation_photo_paths, purge_generation_photos
 from app.services.supabase_client import SupabaseError
 
@@ -283,7 +282,6 @@ async def test_processing_stops_when_generation_was_deleted(monkeypatch):
         "user-1/original.jpg",
         {"prompt_template": "template", "name": "Natural"},
         False,
-        QuotaDecision(allowed=True, watermark=False, pack_id=None),
     )
     assert not sb.uploads
     assert not sb.removals
@@ -301,7 +299,6 @@ async def test_processing_removes_uploaded_result_when_tombstone_wins_race(monke
         "user-1/original.jpg",
         {"prompt_template": "template", "name": "Natural"},
         False,
-        QuotaDecision(allowed=True, watermark=False, pack_id=None),
     )
     assert sb.uploads == [
         "user-1/generation-1_result.png",
