@@ -10,7 +10,9 @@
 # auth.users — so they are applied via Supabase, not this container).
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     environment:
       APP_ENV: development
       MOCK_INFERENCE: "true"

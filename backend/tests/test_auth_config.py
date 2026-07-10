@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 
 import jwt
@@ -104,13 +106,22 @@ async def test_mock_auth_does_not_accept_an_arbitrary_bearer_token():
     assert exc.value.status_code == 401
 
 
-def _otherwise_safe_production_settings(**overrides) -> Settings:
+def _otherwise_safe_production_settings(model_path: Path, **overrides) -> Settings:
+    model_path.write_bytes(b"verified-face-landmarker")
     values = {
         "app_env": "production",
         "mock_auth": False,
+        "mock_inference": False,
+        "mock_payments": False,
         "supabase_url": "https://project.supabase.co",
         "supabase_publishable_key": "sb_publishable_test",
         "supabase_secret_key": "sb_secret_test",
+        "fal_api_key": "fal_test",
+        "mediapipe_face_model": str(model_path),
+        "mediapipe_face_model_sha256": hashlib.sha256(model_path.read_bytes()).hexdigest(),
+        "yookassa_shop_id": "shop_test",
+        "yookassa_secret_key": "payment_test",
+        "smtp_host": "smtp.example.test",
         "admin_api_key": "a" * 32,
         "cors_allowed_origins": "https://www.zubilook.com",
     }
@@ -118,21 +129,29 @@ def _otherwise_safe_production_settings(**overrides) -> Settings:
     return Settings(**values)
 
 
-def test_safe_production_configuration_passes_startup_guard():
-    _otherwise_safe_production_settings().assert_safe_startup()
+def test_safe_production_configuration_passes_startup_guard(tmp_path):
+    _otherwise_safe_production_settings(tmp_path / "model.task").assert_safe_startup()
 
 
 @pytest.mark.parametrize(
     ("overrides", "message"),
     [
         ({"mock_auth": True}, "MOCK_AUTH"),
+        ({"mock_inference": True}, "MOCK_INFERENCE"),
+        ({"mock_payments": True}, "MOCK_PAYMENTS"),
         ({"admin_api_key": "change-me"}, "ADMIN_API_KEY"),
         ({"cors_allowed_origins": "*"}, "CORS_ALLOWED_ORIGINS"),
         ({"cors_allowed_origins": "http://localhost:3000"}, "local origins"),
         ({"supabase_secret_key": ""}, "SUPABASE_SECRET_KEY"),
+        ({"fal_api_key": ""}, "FAL_API_KEY"),
+        ({"mediapipe_face_model_sha256": "wrong"}, "MEDIAPIPE_FACE_MODEL"),
+        ({"yookassa_secret_key": ""}, "YooKassa"),
+        ({"smtp_host": ""}, "SMTP or WhatsApp"),
         ({"photo_retention_days": 31}, "PHOTO_RETENTION_DAYS"),
     ],
 )
-def test_unsafe_production_configuration_is_rejected(overrides, message):
+def test_unsafe_production_configuration_is_rejected(tmp_path, overrides, message):
     with pytest.raises(RuntimeError, match=message):
-        _otherwise_safe_production_settings(**overrides).assert_safe_startup()
+        _otherwise_safe_production_settings(
+            tmp_path / "model.task", **overrides
+        ).assert_safe_startup()

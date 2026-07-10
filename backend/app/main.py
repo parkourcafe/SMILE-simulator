@@ -11,6 +11,7 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app import __version__
 from app.config import get_settings
@@ -24,6 +25,7 @@ from app.routers import (
     styles,
     webhooks,
 )
+from app.services.supabase_client import SupabaseError, get_supabase
 
 logging.basicConfig(level=logging.INFO)
 
@@ -78,3 +80,27 @@ async def health() -> dict:
             "payments": settings.mock_payments,
         },
     }
+
+
+@app.get("/ready", tags=["meta"])
+async def readiness() -> JSONResponse:
+    """Dependency-aware deployment gate; liveness remains available at /health."""
+    checks = {
+        "supabase": "unavailable",
+        "face_model": "not_required" if settings.mock_inference else "unavailable",
+    }
+
+    try:
+        await get_supabase().ping()
+        checks["supabase"] = "ok"
+    except SupabaseError:
+        pass
+
+    if not settings.mock_inference and settings.face_model_is_valid():
+        checks["face_model"] = "ok"
+
+    ready = all(value in {"ok", "not_required"} for value in checks.values())
+    return JSONResponse(
+        status_code=200 if ready else 503,
+        content={"status": "ready" if ready else "not_ready", "checks": checks},
+    )

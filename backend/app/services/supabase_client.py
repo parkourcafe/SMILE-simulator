@@ -81,6 +81,21 @@ class SupabaseClient:
             raise SupabaseError(f"select {table} failed: {resp.status_code} {resp.text}")
         return resp.json()
 
+    async def ping(self) -> None:
+        """Verify that PostgREST is reachable and the migrated schema is queryable."""
+        self._require()
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(
+                    f"{self._rest_base}/styles",
+                    headers=self._headers(),
+                    params={"select": "id", "limit": "1"},
+                )
+        except httpx.HTTPError as exc:
+            raise SupabaseError("readiness check could not reach Supabase") from exc
+        if resp.status_code >= 400:
+            raise SupabaseError(f"readiness check failed with status {resp.status_code}")
+
     async def insert(self, table: str, row: dict[str, Any]) -> dict[str, Any]:
         self._require()
         async with httpx.AsyncClient(timeout=15) as client:

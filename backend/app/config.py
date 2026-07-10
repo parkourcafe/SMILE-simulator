@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -41,6 +43,10 @@ class Settings(BaseSettings):
     inference_provider: str = "fal_flux_pro_fill"
     fal_api_key: str = ""
     fal_flux_fill_endpoint: str = "fal-ai/flux-pro/v1/fill"
+    mediapipe_face_model: str = ""
+    mediapipe_face_model_sha256: str = (
+        "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff"
+    )
 
     # Limits
     free_generations: int = 1
@@ -60,7 +66,7 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
-    smtp_from: str = "AI Smile Simulator <noreply@smilesim.app>"
+    smtp_from: str = "ZubiLook <noreply@zubilook.com>"
     smtp_use_tls: bool = True
     whatsapp_api_base: str = "https://graph.facebook.com/v21.0"
     whatsapp_token: str = ""
@@ -104,6 +110,24 @@ class Settings(BaseSettings):
     def supabase_auth_issuer(self) -> str:
         return f"{self.supabase_url.rstrip('/')}/auth/v1"
 
+    @property
+    def face_model_path(self) -> Path:
+        if self.mediapipe_face_model:
+            return Path(self.mediapipe_face_model)
+        return Path(__file__).resolve().parents[1] / ".cache" / "face_landmarker.task"
+
+    def face_model_is_valid(self) -> bool:
+        path = self.face_model_path
+        try:
+            if not path.is_file():
+                return False
+            if not self.mediapipe_face_model_sha256:
+                return True
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            return digest == self.mediapipe_face_model_sha256.lower()
+        except OSError:
+            return False
+
     def assert_safe_startup(self) -> None:
         """Refuse a production process that would expose mock or default credentials."""
         if not self.is_production:
@@ -112,6 +136,10 @@ class Settings(BaseSettings):
         errors: list[str] = []
         if self.mock_auth:
             errors.append("MOCK_AUTH must be false")
+        if self.mock_inference:
+            errors.append("MOCK_INFERENCE must be false")
+        if self.mock_payments:
+            errors.append("MOCK_PAYMENTS must be false")
         if not self.supabase_url:
             errors.append("SUPABASE_URL is required")
         if not self.supabase_public_key:
@@ -128,10 +156,14 @@ class Settings(BaseSettings):
             errors.append("CORS_ALLOWED_ORIGINS cannot contain '*' in production")
         if any("localhost" in origin or "127.0.0.1" in origin for origin in self.cors_origins):
             errors.append("CORS_ALLOWED_ORIGINS cannot contain local origins in production")
-        if not self.mock_inference and not self.fal_api_key:
-            errors.append("FAL_API_KEY is required when MOCK_INFERENCE=false")
-        if not self.mock_payments and not (self.yookassa_shop_id and self.yookassa_secret_key):
-            errors.append("YooKassa credentials are required when MOCK_PAYMENTS=false")
+        if not self.fal_api_key:
+            errors.append("FAL_API_KEY is required")
+        if not self.face_model_is_valid():
+            errors.append("MEDIAPIPE_FACE_MODEL must exist and match its SHA-256 checksum")
+        if not (self.yookassa_shop_id and self.yookassa_secret_key):
+            errors.append("YooKassa credentials are required")
+        if not self.smtp_host and not (self.whatsapp_token and self.whatsapp_phone_id):
+            errors.append("SMTP or WhatsApp clinic notifications must be configured")
         if not 1 <= self.photo_retention_days <= 30:
             errors.append("PHOTO_RETENTION_DAYS must be between 1 and 30")
 

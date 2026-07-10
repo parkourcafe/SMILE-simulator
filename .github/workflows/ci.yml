@@ -27,6 +27,44 @@ jobs:
       - name: Pytest
         run: pytest -q
 
+  backend-image:
+    name: Backend — production image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build production image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile
+          load: true
+          push: false
+          tags: zubilook-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Verify runtime and bundled ML assets
+        run: |
+          docker run --detach --name zubilook-api --env PORT=8765 --publish 8765:8765 zubilook-api:ci
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8765/health >/dev/null; then
+              break
+            fi
+            if [ "$attempt" = 30 ]; then
+              docker logs zubilook-api
+              exit 1
+            fi
+            sleep 2
+          done
+          test "$(docker exec zubilook-api id --user)" = "10001"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8765/ready)" = "503"
+          docker exec zubilook-api python -c "import mediapipe; from app.config import get_settings; assert get_settings().face_model_is_valid()"
+      - name: Container logs
+        if: always()
+        run: |
+          docker logs zubilook-api || true
+          docker rm --force zubilook-api || true
+
   app:
     name: Flutter — analyze
     runs-on: ubuntu-latest
