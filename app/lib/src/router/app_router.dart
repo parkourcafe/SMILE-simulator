@@ -62,12 +62,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => ResultScreen(generationId: s.pathParameters['id']!),
       ),
       GoRoute(path: '/paywall', builder: (_, __) => const PaywallScreen()),
-      GoRoute(path: '/clinics', builder: (_, __) => const ClinicsScreen()),
       GoRoute(
-        path: '/lead/:clinicId',
-        builder: (_, s) => LeadFormScreen(clinicId: s.pathParameters['clinicId']!),
+        path: '/clinics',
+        builder: (_, s) => ClinicsScreen(
+          generationId: s.uri.queryParameters['generationId'] ?? '',
+        ),
       ),
       GoRoute(path: '/lead/sent', builder: (_, __) => const LeadSentScreen()),
+      GoRoute(
+        path: '/lead/:clinicId',
+        builder: (_, s) => LeadFormScreen(
+          clinicId: s.pathParameters['clinicId']!,
+          generationId: s.uri.queryParameters['generationId'] ?? '',
+        ),
+      ),
       GoRoute(path: '/history', builder: (_, __) => const HistoryScreen()),
       GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
     ],

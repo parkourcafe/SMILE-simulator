@@ -25,6 +25,7 @@ void main() {
   test('local auth accepts only the requested phone and explicit mock code', () async {
     final service = AuthService(mockMode: true);
     await service.requestOtp('+79991234567');
+    expect(service.phone, '+79991234567');
 
     expect(
       await service.verifyOtp(rawPhone: '+79991234567', token: '111111'),
@@ -44,6 +45,7 @@ void main() {
     await service.signOut();
     expect(service.isSignedIn, isFalse);
     expect(service.accessToken, isNull);
+    expect(service.phone, isNull);
     service.dispose();
   });
 

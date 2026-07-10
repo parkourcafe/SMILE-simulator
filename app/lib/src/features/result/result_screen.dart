@@ -57,7 +57,10 @@ class ResultScreen extends ConsumerWidget {
                 height: 380,
                 child: BeforeAfterSlider(before: before, after: after),
               ),
-              _CostAnchor(styleId: flow.style?.id),
+              _CostAnchor(
+                generationId: generationId,
+                styleId: flow.style?.id,
+              ),
               if (gen.hasWatermark)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -88,7 +91,7 @@ class ResultScreen extends ConsumerWidget {
                     FilledButton.icon(
                       icon: const Icon(Icons.location_on_outlined),
                       label: const Text('Найти клинику'),
-                      onPressed: () => context.push('/clinics'),
+                      onPressed: () => context.push(_clinicsPath(generationId)),
                     ),
                   ],
                 ),
@@ -131,12 +134,16 @@ class ResultScreen extends ConsumerWidget {
 
   Widget _action(IconData icon, String label, VoidCallback onTap) =>
       OutlinedButton.icon(icon: Icon(icon), label: Text(label), onPressed: onTap);
+
+  String _clinicsPath(String id) =>
+      Uri(path: '/clinics', queryParameters: {'generationId': id}).toString();
 }
 
 /// "Такая улыбка в {city}: {min–max}" — turns emotion into practical intent.
 class _CostAnchor extends ConsumerStatefulWidget {
-  const _CostAnchor({this.styleId});
+  const _CostAnchor({required this.generationId, this.styleId});
 
+  final String generationId;
   final String? styleId;
 
   @override
@@ -207,7 +214,12 @@ class _CostAnchorState extends ConsumerState<_CostAnchor> {
               FilledButton.tonalIcon(
                 icon: const Icon(Icons.local_hospital_outlined),
                 label: const Text('Узнать точную цену в клинике рядом'),
-                onPressed: () => context.push('/clinics'),
+                onPressed: () => context.push(
+                  Uri(
+                    path: '/clinics',
+                    queryParameters: {'generationId': widget.generationId},
+                  ).toString(),
+                ),
               ),
             ],
           ),

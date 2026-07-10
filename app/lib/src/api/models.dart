@@ -153,3 +153,17 @@ class Clinic {
         distanceKm: (j['distance_km'] as num?)?.toDouble(),
       );
 }
+
+class LeadReceipt {
+  final String id;
+  final String clinicId;
+  final String status;
+
+  LeadReceipt({required this.id, required this.clinicId, required this.status});
+
+  factory LeadReceipt.fromJson(Map<String, dynamic> j) => LeadReceipt(
+        id: j['id'] as String,
+        clinicId: j['clinic_id'] as String,
+        status: j['status'] as String,
+      );
+}
