@@ -20,9 +20,7 @@ CRITERIA = (
     "emotional_response",
 )
 TRUE_VALUES = {"1", "true", "yes"}
-EXPECTED_FACE_MODEL_SHA256 = (
-    "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff"
-)
+EXPECTED_FACE_MODEL_SHA256 = "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff"
 EXPECTED_ENDPOINT = "fal-ai/flux-pro/v1/fill"
 
 
@@ -72,9 +70,7 @@ class Evaluation:
 
 
 def collect_images(input_dir: Path, image_exts: set[str]) -> list[Path]:
-    images = sorted(
-        path for path in input_dir.iterdir() if path.suffix.lower() in image_exts
-    )
+    images = sorted(path for path in input_dir.iterdir() if path.suffix.lower() in image_exts)
     if not images:
         raise EvidenceError(f"No images found in {input_dir}")
     return images
@@ -115,13 +111,9 @@ def load_consent_manifest(
             raise EvidenceError(f"Consent version is missing for {filename}")
         try:
             consented_at = date.fromisoformat((row.get("consented_at") or "").strip())
-            deletion_due_at = date.fromisoformat(
-                (row.get("deletion_due_at") or "").strip()
-            )
+            deletion_due_at = date.fromisoformat((row.get("deletion_due_at") or "").strip())
         except ValueError as exc:
-            raise EvidenceError(
-                f"Consent dates must be ISO YYYY-MM-DD for {filename}"
-            ) from exc
+            raise EvidenceError(f"Consent dates must be ISO YYYY-MM-DD for {filename}") from exc
         if consented_at > today:
             raise EvidenceError(f"Consent date is in the future for {filename}")
         if deletion_due_at < today:
@@ -163,16 +155,12 @@ def build_input_evidence(
         data = path.read_bytes()
         digest = hashlib.sha256(data).hexdigest()
         if digest in seen_hashes:
-            raise EvidenceError(
-                f"Exact duplicate images: {seen_hashes[digest]} and {path.name}"
-            )
+            raise EvidenceError(f"Exact duplicate images: {seen_hashes[digest]} and {path.name}")
         seen_hashes[digest] = path.name
         try:
             width, height, approximate = inspect_image(path)
         except (OSError, ValueError) as exc:
-            raise EvidenceError(
-                f"Image preflight failed for {path.name}: {exc}"
-            ) from exc
+            raise EvidenceError(f"Image preflight failed for {path.name}: {exc}") from exc
         if require_real_landmarks and approximate:
             raise EvidenceError(f"Real Face Landmarker is unavailable for {path.name}")
         consent = consents.get(path.name) if consents else None
@@ -200,9 +188,7 @@ def write_input_manifest(path: Path, records: list[InputEvidence]) -> None:
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
-        writer.writerows(
-            {field: getattr(record, field) for field in fields} for record in records
-        )
+        writer.writerows({field: getattr(record, field) for field in fields} for record in records)
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -260,15 +246,9 @@ def _validate_run_artifacts(
     if len(manifest) != 10:
         issues.append("input_manifest.csv must contain exactly 10 rows")
     else:
-        if any(
-            (row.get("consent_confirmed") or "").lower() not in TRUE_VALUES
-            for row in manifest
-        ):
+        if any((row.get("consent_confirmed") or "").lower() not in TRUE_VALUES for row in manifest):
             issues.append("input_manifest.csv contains an unconsented input")
-        if any(
-            (row.get("face_approximate") or "").lower() in TRUE_VALUES
-            for row in manifest
-        ):
+        if any((row.get("face_approximate") or "").lower() in TRUE_VALUES for row in manifest):
             issues.append("input_manifest.csv contains an approximate face mask")
         if any(
             not row.get("consent_version")
@@ -313,9 +293,7 @@ def evaluate_scorecard(
             try:
                 value = float(row.get(criterion) or "")
             except ValueError as exc:
-                raise EvidenceError(
-                    f"Missing or invalid {criterion} for {key}"
-                ) from exc
+                raise EvidenceError(f"Missing or invalid {criterion} for {key}") from exc
             if not 1.0 <= value <= 5.0:
                 raise EvidenceError(f"{criterion} must be between 1 and 5 for {key}")
             ratings[criterion] = value
@@ -356,17 +334,13 @@ def evaluate_scorecard(
     reasons: list[str] = []
     if recurring_identity_failure:
         decision = "NO-GO"
-        reasons.append(
-            "Recurring identity/face-preservation failure was confirmed by review."
-        )
+        reasons.append("Recurring identity/face-preservation failure was confirmed by review.")
     elif overall < 3.0:
         decision = "NO-GO"
         reasons.append("Overall average is below 3.0.")
     elif overall >= 3.5 and minimum_criterion >= 2.0 and failures == 0 and standard_run:
         decision = "GO"
-        reasons.append(
-            "All quantitative GO thresholds passed on the standardized 10-image run."
-        )
+        reasons.append("All quantitative GO thresholds passed on the standardized 10-image run.")
     else:
         decision = "ITERATE"
         if overall < 3.5:
@@ -393,9 +367,7 @@ def evaluate_scorecard(
         failed=failures,
         styles=styles,
         providers=providers,
-        total_cost_usd=round(
-            sum(float(row.get("cost_usd") or 0) for row in results), 4
-        ),
+        total_cost_usd=round(sum(float(row.get("cost_usd") or 0) for row in results), 4),
         average_duration_ms=round(mean(durations), 1),
         request_ids_captured=request_ids_captured,
         reasons=tuple(reasons),
@@ -436,8 +408,7 @@ def render_report(evaluation: Evaluation, *, now: datetime | None = None) -> str
         "|---|---|",
     ]
     lines.extend(
-        f"| {name} | `{checksum}` |"
-        for name, checksum in evaluation.evidence_checksums.items()
+        f"| {name} | `{checksum}` |" for name, checksum in evaluation.evidence_checksums.items()
     )
     lines.extend(
         [
