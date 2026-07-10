@@ -45,7 +45,7 @@ production system.
 | Website forms | Frontend fallback works; migration `0008` and consent metadata are merged; remote apply is pending | Open |
 | Legal | Internal EN drafts and a release checklist exist; operator facts are unresolved | Blocked on facts |
 | Phase 0 | Harness and real MediaPipe landmark detection are operational locally | Blocked on approved inputs/key |
-| Backend | Production image/readiness, JWT guards, leads, retention, and pre-upload consent contract are implemented; Railway deployment is pending | Open |
+| Backend | Production image/readiness, JWT guards, leads, retention, pre-upload consent, and atomic quota are implemented; Railway deployment is pending | Open |
 | Flutter | OTP, clinics, leads, verified photo deletion, and the pre-upload consent gate are implemented; real-device E2E is pending | Open |
 | Retention | Retryable hard deletion and the 30-day job exist; remote migration and Railway cron are pending | Release blocker |
 | Beta | Not started | Open |
@@ -111,6 +111,11 @@ The code path uses migration `0012_photo_processing_consent.sql`: the authentica
 API records the accepted version and issues the exact private upload path before the
 client can upload a selfie. This remains release evidence only after remote migration,
 Flutter CI, and a real OTP/upload smoke test pass.
+
+Migration `0013_atomic_generation_quota.sql` reserves quota and creates a generation
+in one transaction, settles it by trigger, and is covered by clean-database plus
+concurrent-session CI smoke tests. Production still requires remote migration, a
+five-minute reconciliation cron, and real Supabase verification.
 
 ### Exit evidence
 

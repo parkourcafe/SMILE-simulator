@@ -20,9 +20,10 @@ need Supabase — see step 1.
 
 A dedicated project URL is configured as `htclwrotnmhtbrdisqcu`
 (`https://htclwrotnmhtbrdisqcu.supabase.co`). Do not assume its migration state:
-verify and apply numbered migrations `0001` through `0012` in order before deploy.
+verify and apply numbered migrations `0001` through `0013` in order before deploy.
 Do not skip `0011_auth_user_provisioning.sql` or
-`0012_photo_processing_consent.sql`.
+`0012_photo_processing_consent.sql`; `0013_atomic_generation_quota.sql` is required
+before deploying the backend version that calls the reservation RPC.
 
 Put these in `backend/.env` (copy from `.env.example`):
 
@@ -73,6 +74,27 @@ Storage policy: authenticated clients can upload/update only the original object
 by a current receipt; backend service credentials remain responsible for results,
 masks, and deletion.
 
+Before applying `0013_atomic_generation_quota.sql`, this preflight must return zero
+rows. Do not silently rewrite inconsistent production counters:
+
+```sql
+select 'users' as source, id from users where free_gens_used < 0
+union all
+select 'packs', id from packs
+where generations_total <= 0
+   or generations_used < 0
+   or generations_used > generations_total
+union all
+select 'active_generations', id from generations
+where status in ('pending', 'processing');
+```
+
+Migration `0013` reserves the free or pack credit and inserts the generation in one
+transaction. It ignores expired packs, enforces the per-user generation rate limit,
+marks successful reservations consumed, and returns a credit exactly once when a
+generation becomes failed or deleted. Apply it in a short maintenance window before
+deploying the matching backend so old and new quota paths cannot run concurrently.
+
 Migration `0009_photo_retention.sql` makes photo deletion retryable. After it is
 applied, configure a daily Railway cron using the same backend image:
 
@@ -83,6 +105,14 @@ python -m app.jobs.retention --limit 100
 Run `python -m app.jobs.retention --dry-run --limit 100` first. The live command
 removes original/result/mask objects through the Storage API, then clears their paths
 and records `photo_deleted_at`. A failed delete stays pending for the next run.
+
+Also configure a Railway cron every five minutes for reservations left by a crashed
+worker. Run the dry-run once before enabling the live command:
+
+```bash
+python -m app.jobs.quota_reconciliation --dry-run --limit 100
+python -m app.jobs.quota_reconciliation --limit 100
+```
 
 ## 2. Fal.ai (inference) — pay per use ($0.05/MP, rounded up per image)
 
@@ -107,6 +137,8 @@ charges; vendor pricing can change.
 5. Generate a Railway domain and verify both `/health` and `/ready`.
 6. Run the retention command as a separate daily cron service only after migration
    `0009_photo_retention.sql` is applied.
+7. Run quota reconciliation as a separate five-minute cron only after migration
+   `0013_atomic_generation_quota.sql` is applied.
 
 The image binds to Railway's injected `PORT`, runs as a non-root user, installs the
 ML dependencies, and includes the pinned Face Landmarker bundle with a verified
@@ -114,7 +146,7 @@ SHA-256 checksum. `APP_ENV=production` refuses to start with any mock service, a
 missing/changed model, missing Supabase/Fal.ai/YooKassa credentials, default admin
 key, unsafe CORS, or no clinic notification channel.
 
-Promotion to production is allowed only after migrations `0008`–`0012`, Phase 0 GO,
+Promotion to production is allowed only after migrations `0008`–`0013`, Phase 0 GO,
 real OTP, one approved clinic, legal publication, and staging smoke tests. Roll back
 by selecting the previous successful Railway deployment; rotate any credential that
 appeared in logs or was shared outside the Railway secret store.

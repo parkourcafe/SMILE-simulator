@@ -10,6 +10,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  database:
+    name: Database — migrations + atomic quota
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap Supabase-owned schemas
+        run: psql --set ON_ERROR_STOP=1 --file scripts/ci/supabase_test_bootstrap.sql
+      - name: Apply project migrations
+        run: |
+          for migration in supabase/migrations/*.sql; do
+            psql --set ON_ERROR_STOP=1 --file "$migration"
+          done
+      - name: Verify quota and consent behavior
+        run: psql --set ON_ERROR_STOP=1 --file scripts/ci/verify_atomic_quota.sql
+      - name: Verify concurrent reservations
+        run: bash scripts/ci/verify_quota_concurrency.sh
+
   backend:
     name: Backend — lint + test
     runs-on: ubuntu-latest

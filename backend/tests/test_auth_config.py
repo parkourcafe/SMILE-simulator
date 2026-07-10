@@ -148,6 +148,11 @@ def test_safe_production_configuration_passes_startup_guard(tmp_path):
         ({"yookassa_secret_key": ""}, "YooKassa"),
         ({"smtp_host": ""}, "SMTP or WhatsApp"),
         ({"photo_retention_days": 31}, "PHOTO_RETENTION_DAYS"),
+        (
+            {"generation_reservation_timeout_minutes": 2},
+            "GENERATION_RESERVATION_TIMEOUT_MINUTES",
+        ),
+        ({"rate_limit_per_minute": 0}, "RATE_LIMIT_PER_MINUTE"),
     ],
 )
 def test_unsafe_production_configuration_is_rejected(tmp_path, overrides, message):

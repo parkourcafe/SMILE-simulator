@@ -49,8 +49,8 @@ class Settings(BaseSettings):
     )
 
     # Limits
-    free_generations: int = 1
     rate_limit_per_minute: int = 5
+    generation_reservation_timeout_minutes: int = 15
 
     # Payments
     yookassa_shop_id: str = ""
@@ -166,6 +166,10 @@ class Settings(BaseSettings):
             errors.append("SMTP or WhatsApp clinic notifications must be configured")
         if not 1 <= self.photo_retention_days <= 30:
             errors.append("PHOTO_RETENTION_DAYS must be between 1 and 30")
+        if not 5 <= self.generation_reservation_timeout_minutes <= 60:
+            errors.append("GENERATION_RESERVATION_TIMEOUT_MINUTES must be between 5 and 60")
+        if not 1 <= self.rate_limit_per_minute <= 60:
+            errors.append("RATE_LIMIT_PER_MINUTE must be between 1 and 60")
 
         if errors:
             raise RuntimeError("Unsafe production configuration: " + "; ".join(errors))

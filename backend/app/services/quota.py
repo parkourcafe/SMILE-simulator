@@ -1,53 +1,48 @@
-"""Generation quota logic: free tier (1, watermarked) + paid packs.
-
-Returns whether a user may generate, whether the result must be watermarked, and
-which pack (if any) to decrement. Decrementing itself is done by the caller after a
-successful generation so a failed inference does not consume quota.
-"""
+"""Atomic generation-credit reservation through a service-only database function."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from app.config import get_settings
-from app.services.supabase_client import SupabaseClient
+from app.services.supabase_client import SupabaseClient, SupabaseError
 
 
-@dataclass
-class QuotaDecision:
+@dataclass(frozen=True)
+class QuotaReservation:
     allowed: bool
-    watermark: bool
-    pack_id: str | None  # pack to decrement, or None for the free tier
+    generation: dict | None = None
     reason: str | None = None
 
 
-async def evaluate(sb: SupabaseClient, user_id: str) -> QuotaDecision:
+async def reserve_generation(
+    sb: SupabaseClient,
+    *,
+    user_id: str,
+    style_id: str,
+    photo_consent_id: str,
+    original_photo_path: str,
+) -> QuotaReservation:
+    """Reserve exactly one credit and create the generation row atomically."""
     settings = get_settings()
-
-    # Prefer an active pack with remaining generations (no watermark).
-    packs = await sb.select("packs", filters={"user_id": f"eq.{user_id}"})
-    for pack in packs:
-        if pack["generations_used"] < pack["generations_total"]:
-            return QuotaDecision(allowed=True, watermark=False, pack_id=pack["id"])
-
-    # Otherwise fall back to the free tier (watermarked, capped).
-    users = await sb.select("users", filters={"id": f"eq.{user_id}"}, limit=1)
-    free_used = users[0]["free_gens_used"] if users else 0
-    if free_used < settings.free_generations:
-        return QuotaDecision(allowed=True, watermark=True, pack_id=None)
-
-    return QuotaDecision(allowed=False, watermark=False, pack_id=None, reason="limit_reached")
-
-
-async def consume(sb: SupabaseClient, user_id: str, decision: QuotaDecision) -> None:
-    """Decrement the chosen quota source after a successful generation."""
-    if decision.pack_id:
-        rows = await sb.select("packs", filters={"id": f"eq.{decision.pack_id}"}, limit=1)
-        used = (rows[0]["generations_used"] if rows else 0) + 1
-        await sb.update(
-            "packs", filters={"id": f"eq.{decision.pack_id}"}, patch={"generations_used": used}
-        )
-    else:
-        rows = await sb.select("users", filters={"id": f"eq.{user_id}"}, limit=1)
-        used = (rows[0]["free_gens_used"] if rows else 0) + 1
-        await sb.update("users", filters={"id": f"eq.{user_id}"}, patch={"free_gens_used": used})
+    result = await sb.rpc(
+        "reserve_generation_quota",
+        {
+            "p_user_id": user_id,
+            "p_style_id": style_id,
+            "p_photo_consent_id": photo_consent_id,
+            "p_original_photo_path": original_photo_path,
+            "p_rate_limit": settings.rate_limit_per_minute,
+        },
+    )
+    if not isinstance(result, dict) or not isinstance(result.get("allowed"), bool):
+        raise SupabaseError("reserve_generation_quota returned an invalid response")
+    generation = result.get("generation")
+    if result["allowed"] and not isinstance(generation, dict):
+        raise SupabaseError("reserve_generation_quota omitted the generation row")
+    reason = result.get("reason")
+    return QuotaReservation(
+        allowed=result["allowed"],
+        generation=generation,
+        reason=reason if isinstance(reason, str) else None,
+    )

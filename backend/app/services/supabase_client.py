@@ -82,19 +82,46 @@ class SupabaseClient:
         return resp.json()
 
     async def ping(self) -> None:
-        """Verify that PostgREST is reachable and the migrated schema is queryable."""
+        """Verify PostgREST and the minimum production schema used by the API."""
         self._require()
+        required_schema = (
+            ("styles", "id"),
+            ("generations", "id,photo_consent_id,quota_state"),
+            ("photo_processing_consents", "id,photo_object_path"),
+            ("leads", "id,idempotency_key,transfer_consent_given"),
+            ("clinic_api_keys", "id,key_hash,status"),
+        )
         try:
             async with httpx.AsyncClient(timeout=5) as client:
-                resp = await client.get(
-                    f"{self._rest_base}/styles",
+                for table, columns in required_schema:
+                    resp = await client.get(
+                        f"{self._rest_base}/{table}",
+                        headers=self._headers(),
+                        params={"select": columns, "limit": "1"},
+                    )
+                    if resp.status_code >= 400:
+                        raise SupabaseError(
+                            f"readiness schema check failed for {table}: {resp.status_code}"
+                        )
+                zero_uuid = "00000000-0000-0000-0000-000000000000"
+                rpc_response = await client.post(
+                    f"{self._rest_base}/rpc/reserve_generation_quota",
                     headers=self._headers(),
-                    params={"select": "id", "limit": "1"},
+                    json={
+                        "p_user_id": zero_uuid,
+                        "p_style_id": zero_uuid,
+                        "p_photo_consent_id": zero_uuid,
+                        "p_original_photo_path": f"{zero_uuid}/readiness_probe",
+                        "p_rate_limit": 1,
+                    },
                 )
+                if rpc_response.status_code >= 400:
+                    raise SupabaseError(
+                        "readiness schema check failed for reserve_generation_quota: "
+                        f"{rpc_response.status_code}"
+                    )
         except httpx.HTTPError as exc:
             raise SupabaseError("readiness check could not reach Supabase") from exc
-        if resp.status_code >= 400:
-            raise SupabaseError(f"readiness check failed with status {resp.status_code}")
 
     async def insert(self, table: str, row: dict[str, Any]) -> dict[str, Any]:
         self._require()
@@ -122,6 +149,19 @@ class SupabaseClient:
             )
         if resp.status_code >= 400:
             raise SupabaseError(f"update {table} failed: {resp.status_code} {resp.text}")
+        return resp.json()
+
+    async def rpc(self, function: str, params: dict[str, Any]) -> Any:
+        """Call a service-only Postgres function through PostgREST."""
+        self._require()
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                f"{self._rest_base}/rpc/{function}",
+                headers=self._headers(),
+                json=params,
+            )
+        if resp.status_code >= 400:
+            raise SupabaseError(f"rpc {function} failed: {resp.status_code} {resp.text}")
         return resp.json()
 
     # --- Storage helpers ----------------------------------------------------

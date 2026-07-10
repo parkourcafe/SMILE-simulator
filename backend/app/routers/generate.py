@@ -109,9 +109,8 @@ async def _process(
     photo_path: str,
     style: dict,
     watermark: bool,
-    decision: quota.QuotaDecision,
 ) -> None:
-    """Background job: run the pipeline, persist results, consume quota."""
+    """Run inference; the database trigger settles or releases reserved quota."""
     sb = get_supabase()
     try:
         await sb.update(
@@ -155,7 +154,6 @@ async def _process(
             await sb.remove_objects([result_path, mask_path])
             log.info("discarded result for deleted generation %s", generation_id)
             return
-        await quota.consume(sb, user_id, decision)
     except Exception as exc:  # noqa: BLE001 - record failure, do not crash worker
         log.exception("generation %s failed", generation_id)
         await sb.update(
@@ -179,34 +177,44 @@ async def start_generation(
         user_id=user.id,
         photo_path=body.original_photo_path,
     )
-    decision = await quota.evaluate(sb, user.id)
-    if not decision.allowed:
-        raise HTTPException(status_code=402, detail=decision.reason or "limit_reached")
-
-    styles = await sb.select("styles", filters={"id": f"eq.{body.style_id}"}, limit=1)
+    styles = await sb.select(
+        "styles",
+        filters={"id": f"eq.{body.style_id}", "is_active": "eq.true"},
+        limit=1,
+    )
     if not styles:
         raise HTTPException(status_code=404, detail="style_not_found")
     style = styles[0]
 
-    row = await sb.insert(
-        "generations",
-        {
-            "user_id": user.id,
-            "style_id": str(body.style_id),
-            "photo_consent_id": str(body.photo_consent_id),
-            "original_photo_url": body.original_photo_path,
-            "status": "pending",
-            "has_watermark": decision.watermark,
-        },
+    reservation = await quota.reserve_generation(
+        sb,
+        user_id=user.id,
+        style_id=str(body.style_id),
+        photo_consent_id=str(body.photo_consent_id),
+        original_photo_path=body.original_photo_path,
     )
+    if not reservation.allowed:
+        reason = reservation.reason or "limit_reached"
+        status_code = {
+            "limit_reached": 402,
+            "rate_limited": 429,
+            "style_not_found": 404,
+            "invalid_photo_consent": 422,
+            "user_profile_not_ready": 409,
+        }.get(reason, 409)
+        headers = {"Retry-After": "60"} if reason == "rate_limited" else None
+        raise HTTPException(status_code=status_code, detail=reason, headers=headers)
+    row = reservation.generation
+    if row is None:  # reserve_generation validates this; keep type narrowing explicit.
+        raise RuntimeError("generation reservation did not return a row")
+
     background.add_task(
         _process,
         row["id"],
         user.id,
         body.original_photo_path,
         style,
-        decision.watermark,
-        decision,
+        bool(row["has_watermark"]),
     )
     return _to_out(row)
 
