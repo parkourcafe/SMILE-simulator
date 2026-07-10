@@ -10,7 +10,9 @@ from evidence import EvidenceError, evaluate_scorecard, render_report
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Evaluate the ZubiLook Phase 0 scorecard")
+    parser = argparse.ArgumentParser(
+        description="Evaluate the ZubiLook Phase 0 scorecard"
+    )
     parser.add_argument("--results", required=True, type=Path)
     parser.add_argument("--scorecard", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)

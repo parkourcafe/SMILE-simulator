@@ -143,9 +143,11 @@ charges; vendor pricing can change.
 
 The image binds to Railway's injected `PORT`, runs as a non-root user, installs the
 ML dependencies, and includes the pinned Face Landmarker bundle with a verified
-SHA-256 checksum. `APP_ENV=production` refuses to start with any mock service, a
-missing/changed model, missing Supabase/Fal.ai/YooKassa credentials, default admin
-key, unsafe CORS, or no clinic notification channel.
+SHA-256 checksum. Uvicorn access logs are disabled; the app emits JSON request logs
+with `X-Request-ID` and never logs query strings, request bodies, IP addresses, or
+raw exception values. `APP_ENV=production` refuses to start with any mock service, a
+missing/changed model, missing Supabase/Fal.ai/YooKassa/Sentry credentials, default
+admin key, unsafe CORS, or no clinic notification channel.
 
 Promotion to production is allowed only after migrations `0008`–`0014`, Phase 0 GO,
 real OTP, one approved clinic, legal publication, and staging smoke tests. Roll back
@@ -188,9 +190,13 @@ Fill `SMTP_HOST/PORT/USER/PASSWORD/FROM`. Without SMTP:
 
 Fill `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_ID`. Preferred over email when set.
 
-## 6. Analytics / errors — optional
+## 6. Analytics / errors
 
-- `SENTRY_DSN` — error tracking (backend + Flutter).
+- `SENTRY_DSN` — required for backend production, optional in local/staging. Create the
+  project in the processor region approved for the published privacy policy. Backend
+  reporting disables default PII, request bodies, breadcrumbs, local variables, and
+  tracing; a final scrubber also removes identities, headers, query strings, exception
+  values, and frame variables. Verify one synthetic staging exception before promotion.
 - Mixpanel — client analytics; token wiring is a `TODO(SELENA)` in `app/lib/src/services/analytics.dart`.
 
 ## Flip order (recommended)
@@ -199,6 +205,7 @@ Fill `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_ID`. Preferred over email when set.
 2. Fal.ai (real generations, run locally) →
 3. SMTP (real lead + branded email) →
 4. YooKassa (real payments) →
-5. WhatsApp, Sentry, Mixpanel.
+5. Sentry →
+6. WhatsApp, Mixpanel.
 
 Flip one flag, smoke-test, commit. Never commit `.env` (it is gitignored).

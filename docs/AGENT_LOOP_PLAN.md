@@ -45,7 +45,7 @@ production system.
 | Website forms | Frontend fallback works; migration `0008` and consent metadata are merged; remote apply is pending | Open |
 | Legal | Internal EN drafts and a release checklist exist; operator facts are unresolved | Blocked on facts |
 | Phase 0 | Harness and real MediaPipe landmark detection are operational locally | Blocked on approved inputs/key |
-| Backend | Production image/readiness, JWT guards, leads, retention, consent, atomic quota, and verified YooKassa flow are implemented; Railway/test-shop E2E is pending | Open |
+| Backend | Production image/readiness, JWT guards, leads, retention, consent, quota, verified YooKassa, request correlation, and privacy-safe Sentry wiring are implemented; Railway/test-shop E2E is pending | Open |
 | Flutter | OTP, clinics, leads, deletion, consent, server entitlements, and verified checkout state are implemented; real-device E2E is pending | Open |
 | Retention | Retryable hard deletion and the 30-day job exist; remote migration and Railway cron are pending | Release blocker |
 | Beta | Not started | Open |

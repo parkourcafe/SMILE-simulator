@@ -15,7 +15,7 @@ import httpx
 
 from app.config import get_settings
 
-from .base import GenerationResult, InferenceProvider, ProviderConfig
+from .base import GenerationResult, InferenceProvider, InferenceProviderError, ProviderConfig
 
 FAL_QUEUE_BASE = "https://fal.run"
 COST_PER_MEGAPIXEL_USD = 0.05
@@ -40,7 +40,7 @@ class FalFluxFillProvider(InferenceProvider):
         config: ProviderConfig,
     ) -> GenerationResult:
         if not self.settings.fal_api_key:
-            raise RuntimeError("FAL_API_KEY not configured.")
+            raise InferenceProviderError("inference_not_configured")
 
         endpoint = self.settings.fal_flux_fill_endpoint
         payload = {
@@ -56,16 +56,25 @@ class FalFluxFillProvider(InferenceProvider):
         headers = {"Authorization": f"Key {self.settings.fal_api_key}"}
 
         started = time.monotonic()
-        async with httpx.AsyncClient(timeout=120) as client:
-            resp = await client.post(f"{FAL_QUEUE_BASE}/{endpoint}", headers=headers, json=payload)
-            if resp.status_code >= 400:
-                raise RuntimeError(f"Fal.ai error {resp.status_code}: {resp.text}")
-            body = resp.json()
-            request_id = body.get("request_id") or resp.headers.get("x-fal-request-id")
-            result_url = body["images"][0]["url"]
-            img_resp = await client.get(result_url)
-            img_resp.raise_for_status()
-            result_bytes = img_resp.content
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                resp = await client.post(
+                    f"{FAL_QUEUE_BASE}/{endpoint}", headers=headers, json=payload
+                )
+                if resp.status_code >= 400:
+                    raise InferenceProviderError("inference_provider_rejected")
+                try:
+                    body = resp.json()
+                    request_id = body.get("request_id") or resp.headers.get("x-fal-request-id")
+                    result_url = body["images"][0]["url"]
+                except (IndexError, KeyError, TypeError, ValueError) as exc:
+                    raise InferenceProviderError("inference_invalid_response") from exc
+                img_resp = await client.get(result_url)
+                if img_resp.status_code >= 400:
+                    raise InferenceProviderError("inference_result_unavailable")
+                result_bytes = img_resp.content
+        except httpx.HTTPError as exc:
+            raise InferenceProviderError("inference_provider_unavailable") from exc
         duration_ms = int((time.monotonic() - started) * 1000)
 
         # Fal bills by rounding image pixels up to the next whole megapixel.

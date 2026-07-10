@@ -41,7 +41,9 @@ class _DryRunProvider:
     name = "dryrun"
 
     async def generate(self, *, image, mask, prompt, config):  # noqa: ANN001
-        return GenerationResult(image=image, cost_usd=0.0, duration_ms=0, provider="dryrun")
+        return GenerationResult(
+            image=image, cost_usd=0.0, duration_ms=0, provider="dryrun"
+        )
 
 
 def _sha256(data: bytes) -> str:
@@ -52,7 +54,9 @@ def _side_by_side(before: Image.Image, after: Image.Image) -> Image.Image:
     height = max(before.height, after.height)
     before = before.resize((int(before.width * height / before.height), height))
     after = after.resize((int(after.width * height / after.height), height))
-    canvas = Image.new("RGB", (before.width + after.width + 12, height), (255, 255, 255))
+    canvas = Image.new(
+        "RGB", (before.width + after.width + 12, height), (255, 255, 255)
+    )
     canvas.paste(before, (0, 0))
     canvas.paste(after, (before.width + 12, 0))
     return canvas
@@ -112,7 +116,9 @@ def _write_run_config(
         "watermark": watermark,
         "dry_run": dry_run,
         "face_model_sha256": model_hash,
-        "prompt_template_sha256": {key: _sha256(STYLES[key].encode("utf-8")) for key in style_keys},
+        "prompt_template_sha256": {
+            key: _sha256(STYLES[key].encode("utf-8")) for key in style_keys
+        },
     }
     (output_dir / "run_config.json").write_text(
         json.dumps(config, indent=2, sort_keys=True) + "\n",
@@ -243,12 +249,16 @@ def _write_reports(output_dir: Path, rows: list[dict]) -> None:
         "style_accuracy",
         "emotional_response",
     ]
-    with (output_dir / "scorecard.csv").open("w", newline="", encoding="utf-8") as handle:
+    with (output_dir / "scorecard.csv").open(
+        "w", newline="", encoding="utf-8"
+    ) as handle:
         writer = csv.writer(handle)
         writer.writerow(["file", "style", *criteria, "avg", "notes"])
         for row in rows:
             if row["status"] == "ok":
-                writer.writerow([row["file"], row["style"], *([""] * len(criteria)), "", ""])
+                writer.writerow(
+                    [row["file"], row["style"], *([""] * len(criteria)), "", ""]
+                )
 
     successful = [row for row in rows if row["status"] == "ok"]
     total_cost = sum(float(row["cost_usd"] or 0) for row in rows)
@@ -283,9 +293,15 @@ def _parse_styles(value: str) -> list[str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the standardized ZubiLook Phase 0 spike")
-    parser.add_argument("--input", required=True, type=Path, help="folder of 10 selfies")
-    parser.add_argument("--output", required=True, type=Path, help="new empty output folder")
+    parser = argparse.ArgumentParser(
+        description="Run the standardized ZubiLook Phase 0 spike"
+    )
+    parser.add_argument(
+        "--input", required=True, type=Path, help="folder of 10 selfies"
+    )
+    parser.add_argument(
+        "--output", required=True, type=Path, help="new empty output folder"
+    )
     parser.add_argument(
         "--styles",
         default="natural_white",
@@ -296,13 +312,17 @@ def main() -> None:
         type=Path,
         help="CSV path; defaults to INPUT/consent_manifest.csv",
     )
-    parser.add_argument("--dry-run", action="store_true", help="no Fal.ai call; not valid evidence")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="no Fal.ai call; not valid evidence"
+    )
     parser.add_argument(
         "--allow-nonstandard-count",
         action="store_true",
         help="allow a non-10 input count only for dry-run harness tests",
     )
-    parser.add_argument("--watermark", action="store_true", help="dry-run UI smoke only")
+    parser.add_argument(
+        "--watermark", action="store_true", help="dry-run UI smoke only"
+    )
     args = parser.parse_args()
 
     try:
@@ -310,7 +330,9 @@ def main() -> None:
         if not args.dry_run and len(style_keys) != 1:
             raise EvidenceError("A real Phase 0 run requires exactly one fixed style")
         if args.allow_nonstandard_count and not args.dry_run:
-            raise EvidenceError("Non-standard input count is allowed only with --dry-run")
+            raise EvidenceError(
+                "Non-standard input count is allowed only with --dry-run"
+            )
         if args.watermark and not args.dry_run:
             raise EvidenceError("The standardized real run must not use a watermark")
         if not args.dry_run and not os.environ.get("FAL_API_KEY"):
@@ -326,7 +348,9 @@ def main() -> None:
         consent_path = args.consent_manifest or (args.input / "consent_manifest.csv")
         consents = None
         if consent_path.is_file():
-            consents = load_consent_manifest(consent_path, {path.name for path in images})
+            consents = load_consent_manifest(
+                consent_path, {path.name for path in images}
+            )
         elif not args.dry_run:
             raise EvidenceError(f"Consent manifest is required: {consent_path}")
 

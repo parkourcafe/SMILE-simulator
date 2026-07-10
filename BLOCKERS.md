@@ -50,3 +50,11 @@ Format: symptom → attempts → hypothesis → status.
   photo consent, quota, and payment activation cannot be marked production-ready.
 - **Status:** OPEN (external). Selena will reconnect the Supabase connector; then apply
   migrations in order and run the positive and negative smoke checks from the handoff.
+
+## 7. Sentry project, DSN, and approved processing region are not available
+- **Symptom:** the privacy-safe backend integration is implemented, but there is no
+  real staging/production DSN and the processor region is not confirmed for legal text.
+- **Impact:** alert delivery and one synthetic staging exception cannot be verified;
+  `APP_ENV=production` intentionally refuses to start without `SENTRY_DSN`.
+- **Status:** OPEN (external). Create the Sentry project only after choosing the region,
+  store its DSN in Railway secrets, then run the smoke procedure from `SETUP.md`.

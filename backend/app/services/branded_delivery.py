@@ -20,6 +20,7 @@ from email.message import EmailMessage
 from pathlib import Path
 
 from app.config import Settings, get_settings
+from app.observability import capture_exception
 
 log = logging.getLogger("smile.branded")
 
@@ -114,13 +115,32 @@ async def deliver_branded_result(
             log.info("branded_result_sent lead=%s channel=email", lead_id)
             return BrandedDeliveryResult(True, "email")
         except Exception as exc:  # noqa: BLE001 - never break the lead
-            log.warning("branded email failed for lead %s: %s", lead_id, exc)
+            capture_exception(exc)
+            log.warning(
+                "branded_email_failed",
+                extra={
+                    "event": "branded_email_failed",
+                    "lead_id": lead_id,
+                    "error_type": type(exc).__name__,
+                },
+            )
 
     # Dev / mock: render to a file so the template is verifiable without SMTP.
     try:
         path = await asyncio.to_thread(_write_artifact, settings, lead_id, html)
-        log.info("branded_result_sent lead=%s channel=artifact path=%s", lead_id, path)
+        log.info(
+            "branded_result_sent",
+            extra={"event": "branded_result_sent", "lead_id": lead_id, "channel": "artifact"},
+        )
         return BrandedDeliveryResult(True, "artifact", str(path))
     except Exception as exc:  # noqa: BLE001
-        log.warning("branded artifact write failed for lead %s: %s", lead_id, exc)
-        return BrandedDeliveryResult(False, "skipped", str(exc)[:200])
+        capture_exception(exc)
+        log.warning(
+            "branded_artifact_failed",
+            extra={
+                "event": "branded_artifact_failed",
+                "lead_id": lead_id,
+                "error_type": type(exc).__name__,
+            },
+        )
+        return BrandedDeliveryResult(False, "skipped", "delivery_failed")

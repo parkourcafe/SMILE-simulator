@@ -1,5 +1,6 @@
 import pytest
 
+from app.config import Settings
 from app.services import notifications
 
 
@@ -37,3 +38,33 @@ async def test_whatsapp_preferred_when_configured(monkeypatch):
         {"id": "c", "phone": "+7", "email": "e@x"}, {"id": "l", "user_name": "n", "user_phone": "p"}
     )
     assert res.channel == "whatsapp" and res.ok
+
+
+@pytest.mark.asyncio
+async def test_whatsapp_failure_does_not_return_provider_body(monkeypatch):
+    class Response:
+        status_code = 422
+        text = "provider echoed patient@example.test and secret"
+
+    class Client:
+        def __init__(self, *, timeout):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def post(self, _url, *, json, headers):
+            return Response()
+
+    monkeypatch.setattr(notifications.httpx, "AsyncClient", Client)
+    result = await notifications._send_whatsapp(
+        Settings(whatsapp_token="token", whatsapp_phone_id="phone-id"),
+        "+79991234567",
+        "lead body",
+    )
+
+    assert result.detail == "provider_http_422"
+    assert "patient@example.test" not in result.detail
