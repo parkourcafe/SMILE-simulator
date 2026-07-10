@@ -40,6 +40,23 @@ For production, also set a random `ADMIN_API_KEY` of at least 32 characters and 
 explicit comma-separated `CORS_ALLOWED_ORIGINS`. Startup fails if production uses
 mock auth, a default admin key, missing Supabase keys, or wildcard CORS.
 
+For real Flutter phone OTP:
+
+1. Enable Phone Auth in Supabase and configure a supported SMS provider.
+2. Review Auth rate limits and CAPTCHA before inviting beta users.
+3. Run/build the app with the public project values:
+
+```bash
+flutter run \
+  --dart-define=SUPABASE_URL=https://htclwrotnmhtbrdisqcu.supabase.co \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=<public-key> \
+  --dart-define=API_BASE_URL=<railway-api>/v1
+```
+
+When no Supabase values are compiled in, the local-only mock OTP is `000000` and
+the API client sends `mock-dev-token`. A production build must include the real
+public values; the backend independently rejects mock auth in production.
+
 Migration `0009_photo_retention.sql` makes photo deletion retryable. After it is
 applied, configure a daily Railway cron using the same backend image:
 

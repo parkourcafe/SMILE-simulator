@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Profile
-class ProfileScreen extends StatelessWidget {
+import '../../providers/providers.dart';
+
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(title: const Text('Профиль')),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Profile'),
-            const SizedBox(height: 16),
-            FilledButton(onPressed: () => context.go('/home'), child: const Text('Back')),
-          ],
+        child: FilledButton.icon(
+          icon: const Icon(Icons.logout),
+          label: const Text('Выйти'),
+          onPressed: () async {
+            await ref.read(authServiceProvider).signOut();
+            if (context.mounted) context.go('/login');
+          },
         ),
       ),
     );
