@@ -30,6 +30,7 @@ class PipelineOutput:
     duration_ms: int
     quality_score: float
     face_approximate: bool
+    request_id: str | None
 
 
 def _quality_score(original: Image.Image, result: Image.Image, mask_img: Image.Image) -> float:
@@ -104,4 +105,5 @@ async def run_pipeline(
         duration_ms=gen.duration_ms,
         quality_score=quality,
         face_approximate=landmarks.approximate,
+        request_id=gen.request_id,
     )

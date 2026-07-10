@@ -1,112 +1,89 @@
-# Phase 0 — Spike Test Checklist (10 selfies on Fal.ai)
+# Phase 0 - standardized Fal.ai spike checklist
 
 > Created: 28.06.2026 | 03:38 | Bali
-> Goal: prove FLUX.1 [pro] Fill produces trustworthy mouth-inpainting on real selfies
-> BEFORE writing more product code. Output is a scored demo-pack + a go/no-go call.
-> Scope: this is the only Phase-0 deliverable. No app, no payments, no clinics yet.
+> Updated: 10.07.2026 | 19:48 | Bali
+> Purpose: decide whether the fixed ZubiLook mouth-inpainting pipeline is ready for a
+> closed beta. This is product-quality evidence, not clinical evidence.
 
----
+## 1. Freeze the evaluation set
 
-## 0. Two ways to run the spike
+- [ ] Exactly 10 consented selfies, selected before generation.
+- [ ] Pseudonymous filenames with no name, phone, email, or clinic identifier.
+- [ ] Deliberate variation in lighting, skin tone, face shape, visible teeth, camera
+      quality, and minor pose while remaining usable frontal smile photos.
+- [ ] Exact duplicates removed.
+- [ ] `consent_manifest.csv` has one matching row per image, a consent version,
+      consent date, and deletion date no later than 30 days.
+- [ ] Intentionally unusable photos are stored as a separate diagnostic set and do
+      not enter the 10-image quality score.
 
-**A. Web playground (manual, zero setup).** Upload image + a hand-drawn mouth mask +
-prompt to the Fal.ai `fal-ai/flux-pro/v1/fill` playground. Fastest to eyeball, but the
-mask is not the one we ship.
+## 2. Freeze the pipeline
 
-**B. Batch runner (recommended).** `scripts/phase0/run_spike.py` runs each
-selfie through the **same pipeline as the MVP** (auto mouth mask + our prompts +
-provider abstraction), so the result predicts production quality, and it auto-builds
-the before/after pairs + scorecard. Prefer B; use A only for quick spot checks.
+- [ ] Source commit recorded in `run_config.json`.
+- [ ] Real MediaPipe Face Landmarker model checksum equals
+      `64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff`.
+- [ ] One style only: `natural_white` for the first standardized run.
+- [ ] One prompt/configuration for all 10 people; no person-specific retries or edits.
+- [ ] No watermark in the quality run.
+- [ ] `FAL_API_KEY` exists only in the local environment, never in files or logs.
+
+## 3. Execute
 
 ```bash
-cd backend
-pip install -e ".[ml]"                 # MediaPipe + OpenCV for REAL mouth landmarks
-export FAL_API_KEY=...                  # from fal.ai dashboard
-cd ../scripts/phase0
-python run_spike.py --input ./selfies --output ./out --styles all
-
-# offline sanity check (no key, no cost, approximate mask):
-python run_spike.py --input ./selfies --output ./out --dry-run
+export FAL_API_KEY=...
+python scripts/phase0/run_spike.py \
+  --input ~/phase0_selfies \
+  --output ~/phase0_run_v1 \
+  --styles natural_white
 ```
 
-> ⚠️ Without the `ml` extra installed, the mask falls back to an APPROXIMATE region and
-> `face_approximate=True` in `results.csv` — fine for testing the script, **not** valid
-> for quality judgement. Install `.[ml]` for the real spike.
+- [ ] Preflight reports 10 images and zero approximate masks.
+- [ ] `input_manifest.csv` and `run_config.json` are written before inference.
+- [ ] `results.csv` records status, provider request ID, latency, estimated cost,
+      input/output/mask/prompt checksums, and errors for every attempt.
+- [ ] Compare estimated cost with the actual Fal.ai account charge. Fal.ai currently
+      quotes $0.05/MP rounded up to a whole megapixel, so 1024x1024 is estimated at
+      $0.10 per generation.
 
-Outputs in `out/`: `*__compare.png` (before/after), `results.csv` (cost/latency/heuristic),
-`scorecard.csv` (fill this in by hand), `summary.txt`.
+## 4. Score before aggregation
 
----
+Rate each successful pair from 1 (fail) to 5 (excellent):
 
-## 1. Collect the selfies (do this first)
-
-- [ ] **10 selfies minimum.** Diverse on purpose: 5 women + 5 men, ages 20–55,
-      different skin tones, different tooth conditions (yellow, crooked, gaps, missing,
-      healthy). — *Partner Brief §17.1*
-- [ ] Frontal, mouth slightly open, decent lighting (matches the app's camera hint).
-- [ ] Also collect **3–5 deliberately bad** photos (dark, side angle, mouth closed) to
-      document failure modes honestly. Honesty builds trust with technical partners.
-- [ ] Consent to use each photo internally (152-ФЗ habit from day one).
-
-## 2. Run the spike
-
-- [ ] Run the batch runner over all 10 with `--styles all` (4 styles × 10 = 40 results).
-- [ ] Confirm `results.csv` has no unexpected `error` rows (no_face / multiple_faces /
-      too_small are expected on the bad set — note them).
-- [ ] Record from `summary.txt`: success rate, total cost, **effective cost per good
-      generation** (the number partners care about).
-
-## 3. Score the results (the actual point)
-
-Rate every good before/after pair on the **5 criteria**, scale 1 (fail) → 5 (excellent).
-*Source: CLAUDE.md → Quality Criteria / Partner Brief §17.2.*
-
-| # | Criterion | 1 = Fail | 5 = Excellent |
-|---|---|---|---|
-| 1 | Tooth realism | plastic, fake teeth | indistinguishable from real |
-| 2 | Face preservation | lips/skin/lighting changed | zero change outside mouth |
-| 3 | Boundary blending | visible "pasted-in" edge | seamless mask transition |
-| 4 | Style accuracy | styles look identical | clear difference per style |
-| 5 | Emotional response | uncanny / uncomfortable | "wow, I'd show a friend" |
-
-- [ ] Fill `scorecard.csv` (one row per pair). Compute `avg` per row.
-- [ ] Criterion #5 (emotional response) is the tie-breaker — a warm imperfect result
-      beats a cold perfect one.
-
-## 4. Who evaluates (*Partner Brief §17.3*)
-
-- [ ] Internal team rates all pairs; compute the overall average.
-- [ ] 3–5 outsiders (friends/family), shown pairs with no context: "would you pay ₽149
-      to get this for yourself?"
-- [ ] 1 dentist/orthodontist if available — tooth-shape realism + clinical plausibility.
-
-## 5. Assemble the demo-pack (*Partner Brief §17.1*)
-
-- [ ] 10 before/after pairs (the `*__compare.png` files).
-- [ ] 3–4 style variations shown for 3 subjects (range demo).
-- [ ] 3–5 honest failure examples.
-- [ ] Quality scorecard (the filled `scorecard.csv`, summarized as one table).
-- [ ] Cost data: API cost/gen, avg attempts per good result, effective cost/good (from
-      `summary.txt`).
-- [ ] 30-second raw screen recording of the flow (do once the app skeleton runs).
-
-## 6. Go / No-Go decision (*Partner Brief §17.4 / CLAUDE.md*)
-
-| Outcome | Threshold | Action |
+| Criterion | 1 = fail | 5 = excellent |
 |---|---|---|
-| ✅ GO | avg ≥ 3.5, no criterion < 2.0 | Proceed to closed beta; show demo-pack to first 5 clinics. |
-| ⚠️ CONDITIONAL | avg 3.0–3.4 | Iterate mask/prompts/params; retest in 1 week. |
-| ❌ NO-GO | avg < 3.0 OR 3+ criteria < 2.0 | Pipeline needs fundamental changes. |
+| Tooth realism | plastic or structurally implausible | natural-looking teeth |
+| Face preservation | identity, lips, skin, or lighting changed | no unintended change |
+| Boundary blending | visible pasted edge | seamless transition |
+| Style accuracy | requested effect is absent | requested effect is clear |
+| Emotional response | uncanny or uncomfortable | worth sharing with a friend |
 
-## 7. If iterating (cheapest levers first)
+- [ ] Reviewers fill every cell in `scorecard.csv` before viewing averages.
+- [ ] Repeated identity/face-preservation failures are marked explicitly.
+- [ ] A dentist may comment on realism, but the report does not claim clinical
+      validation or guaranteed treatment results.
 
-1. Mask: tune `DILATE_PX` (15–20) and `FEATHER_SIGMA` (5–8) in `app/ml/mask.py`.
-2. Prompt: edit per-style templates in `scripts/phase0/styles.py`; keep a version log
-   and A/B test (architecture §5.2).
-3. Inference: `num_inference_steps` / `guidance_scale` in `ProviderConfig`.
-4. Only after the above plateau, consider the Phase-2 LoRA path (locked: not now).
+## 5. Generate the decision
 
----
+```bash
+python scripts/phase0/evaluate_scorecard.py \
+  --results ~/phase0_run_v1/results.csv \
+  --scorecard ~/phase0_run_v1/scorecard.csv \
+  --output ~/phase0_run_v1/PHASE0_REPORT.md
+```
 
-**Definition of done for Phase 0:** filled `scorecard.csv`, a one-page cost summary, the
-demo-pack assembled, and a written GO / CONDITIONAL / NO-GO with the average score.
+| Decision | Fixed rule | Next action |
+|---|---|---|
+| GO | 10/10 succeed, one style, overall >=3.5, every criterion average >=2.0, no recurring identity failure | Proceed to closed-beta infrastructure smoke. |
+| ITERATE | Overall 3.0-3.49, a criterion below 2.0, any failed generation, or non-standard evidence | Make one versioned mask/prompt change and rerun the same gate. |
+| NO-GO | Overall below 3.0 or recurring identity/face-preservation failure | Stop production inference promotion and revisit the pipeline. |
+
+Borderline values are not rounded up. Style-range demos and diagnostic bad-photo
+tests happen after this fixed gate and cannot replace it.
+
+## 6. Close the data set
+
+- [ ] Preserve the private report/checksums needed for the decision record.
+- [ ] Do not publish identifiable before/after pairs without separate publication
+      consent.
+- [ ] Delete every input and generated image by its recorded `deletion_due_at` date.
+- [ ] Record deletion completion without retaining the deleted images.

@@ -36,7 +36,13 @@ async def test_run_pipeline_with_fake_provider(selfie_bytes, monkeypatch):
     class FakeProvider:
         async def generate(self, *, image, mask, prompt, config):
             # Echo a plausible result so the quality check has something to compare.
-            return GenerationResult(image=image, cost_usd=0.05, duration_ms=1234, provider="fake")
+            return GenerationResult(
+                image=image,
+                cost_usd=0.05,
+                duration_ms=1234,
+                provider="fake",
+                request_id="request-test",
+            )
 
     monkeypatch.setattr(pipeline, "get_provider", lambda name=None: FakeProvider())
 
@@ -49,6 +55,7 @@ async def test_run_pipeline_with_fake_provider(selfie_bytes, monkeypatch):
     assert out.provider == "fake"
     assert out.cost_usd == 0.05
     assert out.duration_ms == 1234
+    assert out.request_id == "request-test"
     assert 1.0 <= out.quality_score <= 5.0
     # result must be a valid PNG
     Image.open(io.BytesIO(out.result_image)).verify()
