@@ -18,8 +18,9 @@ need Supabase — see step 1.
 
 ## 1. Supabase (datastore) — free tier
 
-A dedicated project is already provisioned: `htclwrotnmhtbrdisqcu`
-(`https://htclwrotnmhtbrdisqcu.supabase.co`). All 8 tables + seeds are applied.
+A dedicated project URL is configured as `htclwrotnmhtbrdisqcu`
+(`https://htclwrotnmhtbrdisqcu.supabase.co`). Do not assume its migration state:
+verify and apply numbered migrations `0001` through `0010` in order before deploy.
 
 Put these in `backend/.env` (copy from `.env.example`):
 
@@ -33,12 +34,13 @@ Put these in `backend/.env` (copy from `.env.example`):
 Prefer the current secret/publishable keys and deactivate legacy keys after every
 deployed client and backend has migrated.
 
-To recreate from scratch elsewhere: apply `supabase/migrations/*.sql` in order,
-then `supabase/seed_dev.sql` (10 test clinics). `auth.users` is Supabase-provided.
+To recreate from scratch elsewhere, apply `supabase/migrations/*.sql` in order.
+Never apply `supabase/seed_dev.sql` to production: those clinic names and contacts are
+test fixtures. Insert only approved pilot clinics with confirmed notification contacts.
 
 For production, also set a random `ADMIN_API_KEY` of at least 32 characters and an
 explicit comma-separated `CORS_ALLOWED_ORIGINS`. Startup fails if production uses
-mock auth, a default admin key, missing Supabase keys, or wildcard CORS.
+any mock service, a default admin key, missing required service keys, or wildcard CORS.
 
 For real Flutter phone OTP:
 
@@ -76,6 +78,28 @@ and records `photo_deleted_at`. A failed delete stays pending for the next run.
 
 > NOTE: this repo's cloud env blocks outbound to `fal.run` (egress policy). Run the
 > Phase 0 spike locally (see `scripts/phase0/README.md`).
+
+## 2.1 Railway backend
+
+1. Create an isolated service from `parkourcafe/SMILE-simulator`.
+2. Set **Root Directory** to `/backend` and **Config file path** to
+   `/backend/railway.json`.
+3. Create a `staging` environment first. Use `APP_ENV=staging` while mocks remain.
+4. Add variables from `backend/.env.example`; never paste secrets into GitHub files.
+5. Generate a Railway domain and verify both `/health` and `/ready`.
+6. Run the retention command as a separate daily cron service only after migration
+   `0009_photo_retention.sql` is applied.
+
+The image binds to Railway's injected `PORT`, runs as a non-root user, installs the
+ML dependencies, and includes the pinned Face Landmarker bundle with a verified
+SHA-256 checksum. `APP_ENV=production` refuses to start with any mock service, a
+missing/changed model, missing Supabase/Fal.ai/YooKassa credentials, default admin
+key, unsafe CORS, or no clinic notification channel.
+
+Promotion to production is allowed only after migrations `0008`–`0010`, Phase 0 GO,
+real OTP, one approved clinic, legal publication, and staging smoke tests. Roll back
+by selecting the previous successful Railway deployment; rotate any credential that
+appeared in logs or was shared outside the Railway secret store.
 
 ## 3. YooKassa (payments RU)
 

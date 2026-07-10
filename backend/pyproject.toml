@@ -15,9 +15,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# MediaPipe is a heavy native dep; install only where server-side face detection runs.
-# The pipeline falls back to a heuristic mask when it is absent (see app/ml/face_mesh.py).
-ml = ["mediapipe>=0.10", "opencv-python-headless>=4.9"]
+# MediaPipe is a heavy native dependency and already supplies its compatible OpenCV
+# distribution. Installing a second `opencv-python-*` package makes `cv2` ambiguous.
+# The pipeline falls back to a heuristic mask when this extra is absent.
+ml = ["mediapipe>=0.10"]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",

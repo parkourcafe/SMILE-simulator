@@ -71,3 +71,38 @@ async def test_remove_objects_uses_storage_delete_api(monkeypatch):
     assert captured["url"] == "https://project.supabase.co/storage/v1/object/photos"
     assert captured["json"] == {"prefixes": ["user/result.png"]}
     assert "Authorization" not in captured["headers"]
+
+
+async def test_ping_uses_a_bounded_schema_query(monkeypatch):
+    captured = {}
+
+    class Response:
+        status_code = 200
+
+    class Client:
+        def __init__(self, *, timeout):
+            captured["timeout"] = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def get(self, url, *, headers, params):
+            captured.update(url=url, headers=headers, params=params)
+            return Response()
+
+    monkeypatch.setattr(supabase_client.httpx, "AsyncClient", Client)
+    sb = SupabaseClient(
+        Settings(
+            supabase_url="https://project.supabase.co",
+            supabase_secret_key="sb_secret_backend_test",
+        )
+    )
+
+    await sb.ping()
+
+    assert captured["timeout"] == 5
+    assert captured["url"] == "https://project.supabase.co/rest/v1/styles"
+    assert captured["params"] == {"select": "id", "limit": "1"}
