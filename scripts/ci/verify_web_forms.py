@@ -63,10 +63,15 @@ def main() -> None:
     assert not anon_key.startswith("sb_secret_"), "Secret key must never be in web/"
     assert consent_version.strip(), "Consent version must not be empty"
 
-    claims = decode_jwt_payload(anon_key)
-    assert claims.get("ref") == PROJECT_REF, "Anon key belongs to another project"
-    assert claims.get("role") == "anon", "Only an anon key may be embedded in web/"
-    assert int(claims.get("exp", 0)) > int(time.time()), "Supabase anon key is expired"
+    if anon_key.startswith("sb_publishable_"):
+        # Modern publishable keys intentionally do not carry JWT claims. The
+        # project URL remains the authoritative project binding in this check.
+        assert len(anon_key) > len("sb_publishable_"), "Publishable key must not be empty"
+    else:
+        claims = decode_jwt_payload(anon_key)
+        assert claims.get("ref") == PROJECT_REF, "Anon key belongs to another project"
+        assert claims.get("role") == "anon", "Only an anon key may be embedded in web/"
+        assert int(claims.get("exp", 0)) > int(time.time()), "Supabase anon key is expired"
 
     parser = FormParser()
     parser.feed(html)
