@@ -6,6 +6,8 @@ import json
 import logging
 import sys
 import time
+from collections.abc import Generator
+from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
@@ -15,6 +17,7 @@ from uuid import UUID, uuid4
 import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.config import Settings
 
@@ -49,6 +52,70 @@ def _safe_request_id(value: str | None) -> str:
         except (AttributeError, ValueError):
             pass
     return str(uuid4())
+
+
+@contextmanager
+def request_id_context(value: str | None) -> Generator[str, None, None]:
+    """Bind a validated request ID to logs and Sentry for this execution context."""
+    request_id = _safe_request_id(value)
+    token = _request_id.set(request_id)
+    with sentry_sdk.isolation_scope() as scope:
+        scope.set_tag("request_id", request_id)
+        try:
+            yield request_id
+        finally:
+            _request_id.reset(token)
+
+
+class RequestBodyTooLarge(Exception):
+    pass
+
+
+class RequestBodyLimitMiddleware:
+    """Reject oversized HTTP bodies, including chunked bodies without a trusted length."""
+
+    def __init__(self, app: ASGIApp, *, max_body_bytes: int) -> None:
+        self.app = app
+        self.max_body_bytes = max_body_bytes
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        content_length = next(
+            (
+                value
+                for name, value in scope.get("headers", [])
+                if name.lower() == b"content-length"
+            ),
+            None,
+        )
+        if content_length is not None:
+            try:
+                declared_length = int(content_length)
+            except ValueError:
+                declared_length = 0
+            if declared_length > self.max_body_bytes:
+                response = JSONResponse(
+                    status_code=413,
+                    content={"detail": "request_body_too_large"},
+                )
+                await response(scope, receive, send)
+                return
+
+        received = 0
+
+        async def limited_receive() -> Message:
+            nonlocal received
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > self.max_body_bytes:
+                    raise RequestBodyTooLarge
+            return message
+
+        await self.app(scope, limited_receive, send)
 
 
 class _RequestContextFilter(logging.Filter):
@@ -152,31 +219,37 @@ def capture_exception(exc: BaseException) -> None:
     sentry_sdk.capture_exception(exc)
 
 
-def install_observability(app: FastAPI) -> None:
+def install_observability(app: FastAPI, *, max_request_body_bytes: int = 256 * 1024) -> None:
+    app.add_middleware(
+        RequestBodyLimitMiddleware,
+        max_body_bytes=max_request_body_bytes,
+    )
+
+    @app.exception_handler(RequestBodyTooLarge)
+    async def request_body_too_large(_request: Request, _exc: Exception) -> JSONResponse:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": "request_body_too_large"},
+        )
+
     @app.middleware("http")
     async def request_context(request: Request, call_next):
-        request_id = _safe_request_id(request.headers.get(REQUEST_ID_HEADER))
-        token = _request_id.set(request_id)
         started = time.monotonic()
-        with sentry_sdk.isolation_scope() as scope:
-            scope.set_tag("request_id", request_id)
-            try:
-                response = await call_next(request)
-                duration_ms = int((time.monotonic() - started) * 1000)
-                log.info(
-                    "request_completed",
-                    extra={
-                        "event": "request_completed",
-                        "http_method": request.method,
-                        "http_path": request.url.path,
-                        "http_status": response.status_code,
-                        "duration_ms": duration_ms,
-                    },
-                )
-                response.headers[REQUEST_ID_HEADER] = request_id
-                return response
-            finally:
-                _request_id.reset(token)
+        with request_id_context(request.headers.get(REQUEST_ID_HEADER)) as request_id:
+            response = await call_next(request)
+            duration_ms = int((time.monotonic() - started) * 1000)
+            log.info(
+                "request_completed",
+                extra={
+                    "event": "request_completed",
+                    "http_method": request.method,
+                    "http_path": request.url.path,
+                    "http_status": response.status_code,
+                    "duration_ms": duration_ms,
+                },
+            )
+            response.headers[REQUEST_ID_HEADER] = request_id
+            return response
 
     @app.exception_handler(Exception)
     async def unhandled_exception(_request: Request, exc: Exception) -> JSONResponse:

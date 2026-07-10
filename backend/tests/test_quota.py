@@ -6,6 +6,7 @@ import pytest
 from fastapi import BackgroundTasks, HTTPException
 
 from app.deps import CurrentUser
+from app.observability import request_id_context
 from app.routers import generate
 from app.schemas import GenerateRequest
 from app.services import quota
@@ -167,13 +168,16 @@ async def test_start_generation_schedules_only_the_reserved_row(monkeypatch):
     monkeypatch.setattr(generate, "get_supabase", lambda: sb)
     background = BackgroundTasks()
 
-    result = await generate.start_generation(
-        _generate_request(),
-        background,
-        CurrentUser(id=USER_ID),
-    )
+    request_id = "33333333-3333-4333-8333-333333333333"
+    with request_id_context(request_id):
+        result = await generate.start_generation(
+            _generate_request(),
+            background,
+            CurrentUser(id=USER_ID),
+        )
 
     assert result.id == UUID(GENERATION_ID)
     assert result.has_watermark is True
     assert len(background.tasks) == 1
+    assert background.tasks[0].args[-1] == request_id
     assert sb.insert_called is False

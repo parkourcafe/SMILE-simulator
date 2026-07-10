@@ -15,6 +15,7 @@ from typing import Any
 import httpx
 
 from app.config import Settings, get_settings
+from app.services.http_retry import get_with_retry
 
 
 class SupabaseError(RuntimeError):
@@ -74,8 +75,8 @@ class SupabaseClient:
         if limit is not None:
             params["limit"] = str(limit)
         async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(
-                f"{self._rest_base}/{table}", headers=self._headers(), params=params
+            resp = await get_with_retry(
+                client, f"{self._rest_base}/{table}", headers=self._headers(), params=params
             )
         if resp.status_code >= 400:
             raise SupabaseError(f"select {table} failed with status {resp.status_code}")
@@ -215,8 +216,8 @@ class SupabaseClient:
         self._require()
         bucket = self.settings.supabase_storage_bucket
         async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(
-                f"{self._storage_base}/object/{bucket}/{path}", headers=self._headers()
+            resp = await get_with_retry(
+                client, f"{self._storage_base}/object/{bucket}/{path}", headers=self._headers()
             )
         if resp.status_code >= 400:
             raise SupabaseError(f"download failed with status {resp.status_code}")

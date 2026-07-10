@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     # Limits
     rate_limit_per_minute: int = 5
     generation_reservation_timeout_minutes: int = 15
+    max_request_body_bytes: int = 256 * 1024
 
     # Payments
     yookassa_shop_id: str = ""
@@ -179,6 +180,8 @@ class Settings(BaseSettings):
             errors.append("GENERATION_RESERVATION_TIMEOUT_MINUTES must be between 5 and 60")
         if not 1 <= self.rate_limit_per_minute <= 60:
             errors.append("RATE_LIMIT_PER_MINUTE must be between 1 and 60")
+        if not 16 * 1024 <= self.max_request_body_bytes <= 1024 * 1024:
+            errors.append("MAX_REQUEST_BODY_BYTES must be between 16384 and 1048576")
 
         if errors:
             raise RuntimeError("Unsafe production configuration: " + "; ".join(errors))

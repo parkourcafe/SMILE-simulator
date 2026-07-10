@@ -5,7 +5,7 @@ import logging
 import re
 import sys
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from app import observability
@@ -13,9 +13,12 @@ from app.config import Settings
 from app.routers import generate
 
 
-def _test_app() -> FastAPI:
+def _test_app(*, max_request_body_bytes: int = 256 * 1024) -> FastAPI:
     app = FastAPI()
-    observability.install_observability(app)
+    observability.install_observability(
+        app,
+        max_request_body_bytes=max_request_body_bytes,
+    )
 
     @app.get("/ok")
     async def ok() -> dict:
@@ -24,6 +27,10 @@ def _test_app() -> FastAPI:
     @app.get("/boom")
     async def boom() -> None:
         raise RuntimeError("patient_phone=+79991234567")
+
+    @app.post("/echo")
+    async def echo(request: Request) -> dict:
+        return {"size": len(await request.body())}
 
     return app
 
@@ -55,6 +62,22 @@ def test_unhandled_exception_is_captured_but_not_returned(monkeypatch):
     }
     assert "+79991234567" not in response.text
     assert isinstance(captured[0], RuntimeError)
+
+
+def test_request_body_limit_rejects_known_and_streamed_overflow():
+    client = TestClient(_test_app(max_request_body_bytes=16), raise_server_exceptions=False)
+
+    known_length = client.post("/echo", content=b"x" * 17)
+    spoofed_length = client.post(
+        "/echo",
+        content=b"x" * 17,
+        headers={"Content-Length": "1"},
+    )
+
+    for response in (known_length, spoofed_length):
+        assert response.status_code == 413
+        assert response.json() == {"detail": "request_body_too_large"}
+        assert re.fullmatch(r"[0-9a-f-]{36}", response.headers["X-Request-ID"])
 
 
 def test_sentry_is_opt_in_and_uses_privacy_guards(monkeypatch):
@@ -145,8 +168,15 @@ class _FailingGenerationSupabase:
 
 async def test_generation_persists_only_a_stable_error_code(monkeypatch):
     sb = _FailingGenerationSupabase()
+    captured_request_ids = []
     monkeypatch.setattr(generate, "get_supabase", lambda: sb)
-    monkeypatch.setattr(generate, "capture_exception", lambda _exc: None)
+    monkeypatch.setattr(
+        generate,
+        "capture_exception",
+        lambda _exc: captured_request_ids.append(observability.get_request_id()),
+    )
+
+    request_id = "22222222-2222-4222-8222-222222222222"
 
     await generate._process(
         "generation-1",
@@ -154,7 +184,10 @@ async def test_generation_persists_only_a_stable_error_code(monkeypatch):
         "user-1/original.jpg",
         {"prompt_template": "template", "name": "Natural"},
         False,
+        request_id,
     )
 
     assert sb.patches[-1] == {"status": "failed", "error_message": "generation_failed"}
     assert "patient@example.test" not in str(sb.patches)
+    assert captured_request_ids == [request_id]
+    assert observability.get_request_id() == "-"

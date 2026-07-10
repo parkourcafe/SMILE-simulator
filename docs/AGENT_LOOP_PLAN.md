@@ -176,6 +176,11 @@ up to pass.
    payload limits, and alerting for generation and lead-delivery failures.
 7. Document deployment, rollback, key rotation, incident response, and backup ownership.
 
+Local implementation status (10.07.2026): request IDs and privacy-safe Sentry/logging,
+a 256 KiB request-body cap, bounded retries for idempotent external reads, and request-ID
+propagation into the generation worker are implemented and covered by backend tests.
+Remote Railway/Sentry verification and operational alerting remain exit evidence.
+
 ### Exit evidence
 
 - Production health/readiness green with `MOCK_AUTH=false` and, after Phase 0 GO,

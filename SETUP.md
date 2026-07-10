@@ -145,7 +145,12 @@ The image binds to Railway's injected `PORT`, runs as a non-root user, installs 
 ML dependencies, and includes the pinned Face Landmarker bundle with a verified
 SHA-256 checksum. Uvicorn access logs are disabled; the app emits JSON request logs
 with `X-Request-ID` and never logs query strings, request bodies, IP addresses, or
-raw exception values. `APP_ENV=production` refuses to start with any mock service, a
+raw exception values. `MAX_REQUEST_BODY_BYTES` defaults to `262144` because clients
+upload photos directly to private Storage; the API accepts only small JSON commands.
+The gateway retries idempotent external GET requests at most three times on transport,
+`408`, `425`, `429`, and selected `5xx` failures. It never automatically retries
+payment creation, inference submission, notifications, or other writes.
+`APP_ENV=production` refuses to start with any mock service, a
 missing/changed model, missing Supabase/Fal.ai/YooKassa/Sentry credentials, default
 admin key, unsafe CORS, or no clinic notification channel.
 
