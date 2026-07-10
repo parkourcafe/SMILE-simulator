@@ -28,6 +28,7 @@ from app.routers import (
 logging.basicConfig(level=logging.INFO)
 
 settings = get_settings()
+settings.assert_safe_startup()
 
 app = FastAPI(
     title="AI Smile Simulator API",
@@ -37,9 +38,15 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO(phase-1): restrict to app + clinic web origins.
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.cors_origins,
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Idempotency-Key",
+        "X-Admin-Key",
+        "X-Clinic-Key",
+    ],
 )
 
 app.include_router(generate.router, prefix="/v1")
@@ -63,7 +70,7 @@ async def health() -> dict:
         "status": "ok",
         "version": __version__,
         "env": settings.app_env,
-        "supabase_configured": bool(settings.supabase_url and settings.supabase_service_role_key),
+        "supabase_configured": settings.supabase_configured,
         "inference_provider": effective_provider,
         "mocks": {
             "inference": settings.mock_inference,

@@ -27,7 +27,7 @@ class SupabaseClient:
 
     @property
     def configured(self) -> bool:
-        return bool(self.settings.supabase_url and self.settings.supabase_service_role_key)
+        return self.settings.supabase_configured
 
     def _require(self) -> None:
         if not self.configured:
@@ -45,12 +45,15 @@ class SupabaseClient:
         return f"{self.settings.supabase_url}/storage/v1"
 
     def _headers(self, *, prefer: str | None = None) -> dict[str, str]:
-        key = self.settings.supabase_service_role_key
+        key = self.settings.supabase_server_key
         headers = {
             "apikey": key,
-            "Authorization": f"Bearer {key}",
             "Content-Type": "application/json",
         }
+        # Current sb_secret keys are opaque API keys and must not be sent as JWTs.
+        # The legacy service_role key is a JWT and still needs the bearer header.
+        if not key.startswith("sb_secret_"):
+            headers["Authorization"] = f"Bearer {key}"
         if prefer:
             headers["Prefer"] = prefer
         # Target a non-default Postgres schema via PostgREST profile headers. Only sent
@@ -126,12 +129,8 @@ class SupabaseClient:
         """Upload bytes to the private bucket; returns the object path."""
         self._require()
         bucket = self.settings.supabase_storage_bucket
-        headers = {
-            "apikey": self.settings.supabase_service_role_key,
-            "Authorization": f"Bearer {self.settings.supabase_service_role_key}",
-            "Content-Type": content_type,
-            "x-upsert": "true",
-        }
+        headers = self._headers()
+        headers.update({"Content-Type": content_type, "x-upsert": "true"})
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 f"{self._storage_base}/object/{bucket}/{path}", headers=headers, content=data
