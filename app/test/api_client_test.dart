@@ -93,6 +93,73 @@ void main() {
     });
   });
 
+  test('purchase sends idempotency and does not infer local activation', () async {
+    final adapter = _RecordingAdapter(
+      body: {
+        'payment_id': '10000000-0000-0000-0000-000000000001',
+        'status': 'pending',
+        'payment_url': 'https://yoomoney.ru/checkout/1',
+      },
+    );
+    final dio = Dio(BaseOptions(baseUrl: 'https://api.example.test/v1'));
+    dio.httpClientAdapter = adapter;
+    final client = ApiClient(dio: dio);
+
+    final receipt = await client.purchase(
+      packType: 'mini',
+      provider: 'yookassa',
+      idempotencyKey: '20000000-0000-0000-0000-000000000001',
+    );
+
+    expect(adapter.request.path, '/api/packs/purchase');
+    expect(
+      adapter.request.headers['Idempotency-Key'],
+      '20000000-0000-0000-0000-000000000001',
+    );
+    expect(adapter.request.data, {
+      'pack_type': 'mini',
+      'provider': 'yookassa',
+    });
+    expect(receipt.status, 'pending');
+    expect(receipt.isCompleted, isFalse);
+    expect(receipt.paymentUrl, 'https://yoomoney.ru/checkout/1');
+  });
+
+  test('entitlements and payment status are server authoritative', () async {
+    final entitlementAdapter = _RecordingAdapter(
+      body: {'free_remaining': 0, 'pack_remaining': 17},
+    );
+    final entitlementDio = Dio(BaseOptions(baseUrl: 'https://api.example.test/v1'));
+    entitlementDio.httpClientAdapter = entitlementAdapter;
+    final entitlementClient = ApiClient(dio: entitlementDio);
+
+    final entitlements = await entitlementClient.entitlements();
+    expect(entitlements.freeRemaining, 0);
+    expect(entitlements.packRemaining, 17);
+    expect(entitlementAdapter.request.path, '/api/packs/entitlements');
+
+    final statusAdapter = _RecordingAdapter(
+      body: {
+        'payment_id': '10000000-0000-0000-0000-000000000001',
+        'status': 'completed',
+        'pack_id': '30000000-0000-0000-0000-000000000001',
+      },
+    );
+    final statusDio = Dio(BaseOptions(baseUrl: 'https://api.example.test/v1'));
+    statusDio.httpClientAdapter = statusAdapter;
+    final statusClient = ApiClient(dio: statusDio);
+
+    final status = await statusClient.paymentStatus(
+      '10000000-0000-0000-0000-000000000001',
+    );
+    expect(status.isCompleted, isTrue);
+    expect(status.packId, '30000000-0000-0000-0000-000000000001');
+    expect(
+      statusAdapter.request.path,
+      '/api/packs/payments/10000000-0000-0000-0000-000000000001',
+    );
+  });
+
   test('submitLead sends consent and a stable idempotency key', () async {
     final adapter = _RecordingAdapter(
       statusCode: 201,

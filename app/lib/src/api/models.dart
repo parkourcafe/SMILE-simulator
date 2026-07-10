@@ -115,6 +115,65 @@ class PackOption {
       );
 }
 
+class EntitlementSnapshot {
+  final int freeRemaining;
+  final int packRemaining;
+
+  EntitlementSnapshot({
+    required this.freeRemaining,
+    required this.packRemaining,
+  });
+
+  factory EntitlementSnapshot.fromJson(Map<String, dynamic> j) =>
+      EntitlementSnapshot(
+        freeRemaining: j['free_remaining'] as int,
+        packRemaining: j['pack_remaining'] as int,
+      );
+}
+
+class PurchaseReceipt {
+  final String paymentId;
+  final String status;
+  final String? paymentUrl;
+
+  PurchaseReceipt({
+    required this.paymentId,
+    required this.status,
+    this.paymentUrl,
+  });
+
+  bool get isCompleted => status == 'completed';
+  bool get isFailed => status == 'failed';
+
+  factory PurchaseReceipt.fromJson(Map<String, dynamic> j) => PurchaseReceipt(
+        paymentId: j['payment_id'] as String,
+        status: j['status'] as String,
+        paymentUrl: j['payment_url'] as String?,
+      );
+}
+
+class PaymentStatusReceipt {
+  final String paymentId;
+  final String status;
+  final String? packId;
+
+  PaymentStatusReceipt({
+    required this.paymentId,
+    required this.status,
+    this.packId,
+  });
+
+  bool get isCompleted => status == 'completed';
+  bool get isFailed => status == 'failed';
+
+  factory PaymentStatusReceipt.fromJson(Map<String, dynamic> j) =>
+      PaymentStatusReceipt(
+        paymentId: j['payment_id'] as String,
+        status: j['status'] as String,
+        packId: j['pack_id'] as String?,
+      );
+}
+
 class PriceEstimate {
   final String id;
   final String city;

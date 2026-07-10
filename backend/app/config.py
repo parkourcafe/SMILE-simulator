@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     # Payments
     yookassa_shop_id: str = ""
     yookassa_secret_key: str = ""
+    yookassa_return_url: str = ""
     click_secret_key: str = ""
 
     # Admin / clinic auth
@@ -162,6 +163,12 @@ class Settings(BaseSettings):
             errors.append("MEDIAPIPE_FACE_MODEL must exist and match its SHA-256 checksum")
         if not (self.yookassa_shop_id and self.yookassa_secret_key):
             errors.append("YooKassa credentials are required")
+        if (
+            not self.yookassa_return_url.startswith("https://")
+            or "localhost" in self.yookassa_return_url
+            or "127.0.0.1" in self.yookassa_return_url
+        ):
+            errors.append("YOOKASSA_RETURN_URL must be a public HTTPS URL")
         if not self.smtp_host and not (self.whatsapp_token and self.whatsapp_phone_id):
             errors.append("SMTP or WhatsApp clinic notifications must be configured")
         if not 1 <= self.photo_retention_days <= 30:

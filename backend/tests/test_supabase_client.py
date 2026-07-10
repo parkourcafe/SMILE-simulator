@@ -74,7 +74,7 @@ async def test_remove_objects_uses_storage_delete_api(monkeypatch):
 
 
 async def test_ping_uses_a_bounded_schema_query(monkeypatch):
-    captured = {"requests": []}
+    captured = {"requests": [], "rpc": []}
 
     class Response:
         status_code = 200
@@ -94,7 +94,7 @@ async def test_ping_uses_a_bounded_schema_query(monkeypatch):
             return Response()
 
         async def post(self, url, *, headers, json):
-            captured["rpc"] = (url, headers, json)
+            captured["rpc"].append((url, headers, json))
             return Response()
 
     monkeypatch.setattr(supabase_client.httpx, "AsyncClient", Client)
@@ -114,13 +114,16 @@ async def test_ping_uses_a_bounded_schema_query(monkeypatch):
         "photo_processing_consents",
         "leads",
         "clinic_api_keys",
+        "payments",
     ]
     assert captured["requests"][1][2] == {
         "select": "id,photo_consent_id,quota_state",
         "limit": "1",
     }
-    assert captured["rpc"][0].endswith("/rpc/reserve_generation_quota")
-    assert captured["rpc"][2]["p_rate_limit"] == 1
+    assert captured["rpc"][0][0].endswith("/rpc/reserve_generation_quota")
+    assert captured["rpc"][0][2]["p_rate_limit"] == 1
+    assert captured["rpc"][1][0].endswith("/rpc/activate_yookassa_payment")
+    assert captured["rpc"][1][2]["p_provider_payment_id"] == "readiness_probe"
 
 
 async def test_rpc_posts_service_function_parameters(monkeypatch):

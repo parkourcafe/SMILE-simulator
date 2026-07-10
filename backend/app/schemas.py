@@ -126,12 +126,28 @@ class PackOption(BaseModel):
 
 class PurchaseRequest(BaseModel):
     pack_type: PackTypeStr
-    provider: str  # yookassa | click | payme | apple_iap | google_play
+    provider: Literal["yookassa"]
 
 
 class PurchaseResponse(BaseModel):
     payment_id: UUID
+    status: Literal["pending", "completed", "failed"]
     payment_url: str | None = None  # redirect URL for web checkout providers
+
+
+class PaymentStatusOut(BaseModel):
+    payment_id: UUID
+    status: Literal["pending", "completed", "failed"]
+    pack_id: UUID | None = None
+
+
+class EntitlementsOut(BaseModel):
+    free_remaining: int
+    pack_remaining: int
+
+    @property
+    def can_generate(self) -> bool:
+        return self.free_remaining + self.pack_remaining > 0
 
 
 class MyPackOut(BaseModel):

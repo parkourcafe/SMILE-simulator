@@ -4,6 +4,7 @@ import '../api/api_client.dart';
 import '../api/models.dart';
 import '../features/auth/auth_service.dart';
 import '../features/upload/precheck.dart';
+import 'entitlements.dart';
 
 /// Phone-auth session. Without compile-time Supabase config this uses the explicit
 /// local OTP flow; production builds use Supabase sessions.
@@ -39,6 +40,19 @@ final historyProvider = FutureProvider<List<Generation>>((ref) {
 /// Purchasable packs for the paywall.
 final packsProvider = FutureProvider<List<PackOption>>((ref) {
   return ref.watch(apiClientProvider).availablePacks();
+});
+
+/// Server-authoritative free and paid generation balance.
+final entitlementsSyncProvider = FutureProvider<Entitlements>((ref) async {
+  final snapshot = await ref.watch(apiClientProvider).entitlements();
+  ref.read(entitlementsProvider.notifier).replace(
+        freeRemaining: snapshot.freeRemaining,
+        packRemaining: snapshot.packRemaining,
+      );
+  return Entitlements(
+    freeRemaining: snapshot.freeRemaining,
+    packRemaining: snapshot.packRemaining,
+  );
 });
 
 /// User's city, used for the result-screen cost anchor. Defaults to Moscow until

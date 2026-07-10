@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../providers/entitlements.dart';
 import '../../providers/providers.dart';
 
 /// Home: primary upload CTA, remaining-generations counter, recent results.
@@ -11,6 +12,9 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(historyProvider);
+    final entitlementLoad = ref.watch(entitlementsSyncProvider);
+    final entitlements = ref.watch(entitlementsProvider);
+    final canStart = entitlementLoad.hasValue && entitlements.canGenerate;
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI Smile Simulator'),
@@ -26,37 +30,57 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // TODO(phase-3): show real remaining count from packs/free tier.
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('0 of 1 free generation used'),
+                padding: const EdgeInsets.all(16),
+                child: entitlementLoad.when(
+                  data: (_) => Text(
+                    'Доступно визуализаций: ${entitlements.totalRemaining}',
+                  ),
+                  loading: () => const LinearProgressIndicator(),
+                  error: (_, __) => Row(
+                    children: [
+                      const Expanded(
+                        child: Text('Не удалось проверить доступный баланс'),
+                      ),
+                      IconButton(
+                        tooltip: 'Повторить',
+                        icon: const Icon(Icons.refresh),
+                        onPressed: () => ref.invalidate(entitlementsSyncProvider),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
               icon: const Icon(Icons.camera_alt_outlined),
-              label: const Text('Try a new smile'),
-              onPressed: () => context.push('/upload'),
+              label: const Text('Примерить новую улыбку'),
+              onPressed: entitlementLoad.hasValue
+                  ? () => context.push(canStart ? '/upload' : '/paywall')
+                  : null,
             ),
             const SizedBox(height: 24),
-            Text('Recent', style: Theme.of(context).textTheme.titleMedium),
+            Text('Последние результаты', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Expanded(
               child: history.when(
                 data: (items) => items.isEmpty
-                    ? const Center(child: Text('No generations yet'))
+                    ? const Center(child: Text('Результатов пока нет'))
                     : ListView.separated(
                         itemCount: items.length,
                         separatorBuilder: (_, __) => const Divider(),
                         itemBuilder: (_, i) => ListTile(
-                          title: Text('Generation ${items[i].id.substring(0, 8)}'),
+                          title: Text('Визуализация ${items[i].id.substring(0, 8)}'),
                           subtitle: Text(items[i].status.name),
                           onTap: () => context.push('/result/${items[i].id}'),
                         ),
                       ),
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Could not load history\n$e')),
+                error: (_, __) => const Center(
+                  child: Text('Не удалось загрузить историю'),
+                ),
               ),
             ),
           ],

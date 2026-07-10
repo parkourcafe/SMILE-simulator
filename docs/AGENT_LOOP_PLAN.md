@@ -45,8 +45,8 @@ production system.
 | Website forms | Frontend fallback works; migration `0008` and consent metadata are merged; remote apply is pending | Open |
 | Legal | Internal EN drafts and a release checklist exist; operator facts are unresolved | Blocked on facts |
 | Phase 0 | Harness and real MediaPipe landmark detection are operational locally | Blocked on approved inputs/key |
-| Backend | Production image/readiness, JWT guards, leads, retention, pre-upload consent, and atomic quota are implemented; Railway deployment is pending | Open |
-| Flutter | OTP, clinics, leads, verified photo deletion, and the pre-upload consent gate are implemented; real-device E2E is pending | Open |
+| Backend | Production image/readiness, JWT guards, leads, retention, consent, atomic quota, and verified YooKassa flow are implemented; Railway/test-shop E2E is pending | Open |
+| Flutter | OTP, clinics, leads, deletion, consent, server entitlements, and verified checkout state are implemented; real-device E2E is pending | Open |
 | Retention | Retryable hard deletion and the 30-day job exist; remote migration and Railway cron are pending | Release blocker |
 | Beta | Not started | Open |
 
@@ -116,6 +116,11 @@ Migration `0013_atomic_generation_quota.sql` reserves quota and creates a genera
 in one transaction, settles it by trigger, and is covered by clean-database plus
 concurrent-session CI smoke tests. Production still requires remote migration, a
 five-minute reconciliation cron, and real Supabase verification.
+
+Migration `0014_yookassa_payments.sql` stores an idempotent payment intent and activates
+exactly one pack only after a server-to-server YooKassa status check. Payment completion
+is a separate gate requiring test-shop redirect, replayed webhook, fiscalization review,
+and confirmation that no client-side optimistic credit is granted.
 
 ### Exit evidence
 
