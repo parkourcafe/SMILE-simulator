@@ -20,6 +20,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from app.deps import CurrentUser, get_current_user
 from app.ml.pipeline import run_pipeline
 from app.ml.providers.base import ProviderConfig  # noqa: F401 (documents the contract)
+from app.routers.photo_consents import PHOTO_CONSENT_VERSION
 from app.schemas import (
     GenerateRequest,
     GenerationListOut,
@@ -56,6 +57,33 @@ async def _signed(sb: SupabaseClient, path: str | None) -> str | None:
         return await sb.create_signed_url(path)
     except SupabaseError:
         return None
+
+
+async def _validate_photo_consent(
+    sb: SupabaseClient,
+    *,
+    consent_id: str,
+    user_id: str,
+    photo_path: str,
+) -> dict:
+    rows = await sb.select(
+        "photo_processing_consents",
+        filters={"id": f"eq.{consent_id}"},
+        limit=1,
+    )
+    if not rows or rows[0].get("user_id") != user_id:
+        raise HTTPException(status_code=422, detail="invalid_photo_consent")
+    consent = rows[0]
+    if consent.get("consent_given") is not True:
+        raise HTTPException(status_code=422, detail="invalid_photo_consent")
+    if (
+        consent.get("consent_version") != PHOTO_CONSENT_VERSION
+        or consent.get("consent_scope") != "smile_visualization"
+    ):
+        raise HTTPException(status_code=422, detail="stale_photo_consent")
+    if consent.get("photo_object_path") != photo_path:
+        raise HTTPException(status_code=422, detail="photo_path_consent_mismatch")
+    return consent
 
 
 def _to_out(
@@ -145,6 +173,12 @@ async def start_generation(
 ) -> GenerationOut:
     sb = get_supabase()
     _validate_owned_photo_path(body.original_photo_path, user.id)
+    await _validate_photo_consent(
+        sb,
+        consent_id=str(body.photo_consent_id),
+        user_id=user.id,
+        photo_path=body.original_photo_path,
+    )
     decision = await quota.evaluate(sb, user.id)
     if not decision.allowed:
         raise HTTPException(status_code=402, detail=decision.reason or "limit_reached")
@@ -159,6 +193,7 @@ async def start_generation(
         {
             "user_id": user.id,
             "style_id": str(body.style_id),
+            "photo_consent_id": str(body.photo_consent_id),
             "original_photo_url": body.original_photo_path,
             "status": "pending",
             "has_watermark": decision.watermark,
@@ -237,8 +272,14 @@ async def retry_generation(
     if not rows or rows[0]["user_id"] != user.id:
         raise HTTPException(status_code=404, detail="not_found")
     prev = rows[0]
+    if not prev.get("photo_consent_id"):
+        raise HTTPException(status_code=409, detail="photo_consent_required")
     style_id = str(body.style_id) if body.style_id else prev["style_id"]
-    req = GenerateRequest(style_id=style_id, original_photo_path=prev["original_photo_url"])
+    req = GenerateRequest(
+        style_id=style_id,
+        photo_consent_id=prev["photo_consent_id"],
+        original_photo_path=prev["original_photo_url"],
+    )
     return await start_generation(req, background, user)
 
 

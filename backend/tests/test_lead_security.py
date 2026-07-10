@@ -190,6 +190,8 @@ def test_lead_requires_explicit_transfer_consent_and_e164_phone():
     with pytest.raises(ValidationError):
         _request(consent_given=False)
     with pytest.raises(ValidationError):
+        _request(consent_given=1)
+    with pytest.raises(ValidationError):
         _request(phone="89991234567")
 
 

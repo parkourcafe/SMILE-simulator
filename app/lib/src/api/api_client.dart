@@ -40,14 +40,30 @@ class ApiClient {
   }
 
   // --- Generation -----------------------------------------------------------
+  /// Record explicit processing consent before the client receives an upload path.
+  Future<PhotoConsentReceipt> createPhotoConsent({
+    required bool consentGiven,
+    required String consentVersion,
+    required String consentLocale,
+  }) async {
+    final resp = await _dio.post('/api/photo-consents', data: {
+      'consent_given': consentGiven,
+      'consent_version': consentVersion,
+      'consent_locale': consentLocale,
+    });
+    return PhotoConsentReceipt.fromJson(resp.data as Map<String, dynamic>);
+  }
+
   /// Start a generation. The photo is uploaded directly to Storage first; pass its
   /// object path here (architecture §10.3).
   Future<Generation> startGeneration({
     required String styleId,
+    required String photoConsentId,
     required String originalPhotoPath,
   }) async {
     final resp = await _dio.post('/api/generate', data: {
       'style_id': styleId,
+      'photo_consent_id': photoConsentId,
       'original_photo_path': originalPhotoPath,
     });
     return Generation.fromJson(resp.data as Map<String, dynamic>);

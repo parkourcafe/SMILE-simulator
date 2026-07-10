@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 
 GenerationStatus = str  # pending | processing | completed | failed
 PackTypeStr = str  # mini | main | extended | promo
@@ -27,9 +27,33 @@ class GenerateRequest(BaseModel):
     """Client uploads the photo directly to Storage, then calls generate with its path."""
 
     style_id: UUID
+    photo_consent_id: UUID
     original_photo_path: str = Field(
         ..., description="Path of the uploaded selfie inside the private storage bucket"
     )
+
+
+class PhotoConsentRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    consent_given: StrictBool
+    consent_version: str = Field(min_length=1, max_length=80)
+    consent_locale: Literal["ru", "en", "uz"]
+
+    @field_validator("consent_given")
+    @classmethod
+    def require_explicit_consent(cls, value: bool) -> bool:
+        if value is not True:
+            raise ValueError("consent_given must be true")
+        return value
+
+
+class PhotoConsentOut(BaseModel):
+    id: UUID
+    consent_version: str
+    consent_locale: Literal["ru", "en", "uz"]
+    consented_at: datetime
+    upload_path: str
 
 
 class GenerationOut(BaseModel):
@@ -139,9 +163,16 @@ class LeadRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     phone: str = Field(pattern=r"^\+[1-9]\d{7,14}$")
     preferred_time: Literal["morning", "afternoon", "evening"] | None = None
-    consent_given: Literal[True]
+    consent_given: StrictBool
     consent_version: str = Field(min_length=1, max_length=80)
     consent_locale: Literal["ru", "en", "uz"]
+
+    @field_validator("consent_given")
+    @classmethod
+    def require_explicit_consent(cls, value: bool) -> bool:
+        if value is not True:
+            raise ValueError("consent_given must be true")
+        return value
 
 
 class LeadOut(BaseModel):

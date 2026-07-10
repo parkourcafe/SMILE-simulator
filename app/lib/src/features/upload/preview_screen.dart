@@ -3,11 +3,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/generation_flow.dart';
 import '../../providers/providers.dart';
 import '../../services/analytics.dart';
 import 'precheck.dart';
+
+const photoConsentVersion = 'photo-beta-2026-07-10';
+final _privacyUri = Uri.parse('https://www.zubilook.com/privacy.html?lang=ru');
+final _termsUri = Uri.parse('https://www.zubilook.com/terms.html?lang=ru');
 
 /// Preview + live photo pre-check (v1.1). Runs the advisory on-device checks on
 /// the captured/selected image and gates "Continue" until they pass. Real MediaPipe
@@ -23,11 +28,56 @@ class PreviewScreen extends ConsumerStatefulWidget {
 class _PreviewScreenState extends ConsumerState<PreviewScreen> {
   PreCheckResult? _result;
   bool _checking = true;
+  bool _consentGiven = false;
+  bool _recordingConsent = false;
+  String? _consentError;
 
   @override
   void initState() {
     super.initState();
+    _consentGiven = ref.read(generationFlowProvider).photoConsent != null;
     WidgetsBinding.instance.addPostFrameCallback((_) => _runCheck());
+  }
+
+  Future<void> _openDocument(Uri uri) async {
+    var opened = false;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      opened = false;
+    }
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось открыть документ')),
+      );
+    }
+  }
+
+  Future<void> _continue() async {
+    if (!_consentGiven || _recordingConsent) return;
+    setState(() {
+      _recordingConsent = true;
+      _consentError = null;
+    });
+    try {
+      final notifier = ref.read(generationFlowProvider.notifier);
+      final existing = ref.read(generationFlowProvider).photoConsent;
+      if (existing?.consentVersion != photoConsentVersion) {
+        await notifier.recordPhotoConsent(
+          consentVersion: photoConsentVersion,
+          consentLocale: 'ru',
+        );
+      }
+      if (mounted) context.push('/styles');
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _consentError = 'Не удалось зафиксировать согласие. Фото не загружено.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _recordingConsent = false);
+    }
   }
 
   Future<void> _runCheck() async {
@@ -55,33 +105,104 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
   Widget build(BuildContext context) {
     final photo = ref.watch(generationFlowProvider).photo;
     final result = _result;
-    final canContinue = result?.passed ?? false;
+    final canContinue =
+        (result?.passed ?? false) && _consentGiven && !_recordingConsent;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Проверка фото')),
       body: photo == null
           ? const Center(child: Text('Фото не выбрано'))
-          : Column(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
+          : SafeArea(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                children: [
+                  AspectRatio(
+                    aspectRatio: 4 / 5,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.file(File(photo.path), fit: BoxFit.cover),
+                      borderRadius: BorderRadius.circular(8),
+                      child: ColoredBox(
+                        color: Colors.black,
+                        child: Image.file(File(photo.path), fit: BoxFit.contain),
+                      ),
                     ),
                   ),
-                ),
-                if (_checking)
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: LinearProgressIndicator(),
-                  )
-                else if (result != null)
-                  _CheckList(result: result),
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
+                  const SizedBox(height: 12),
+                  if (_checking)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: LinearProgressIndicator(),
+                    )
+                  else if (result != null)
+                    _CheckList(result: result),
+                  const SizedBox(height: 12),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 8, 10, 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Checkbox(
+                            value: _consentGiven,
+                            onChanged: _recordingConsent
+                                ? null
+                                : (value) {
+                                    final accepted = value ?? false;
+                                    setState(() {
+                                      _consentGiven = accepted;
+                                      _consentError = null;
+                                    });
+                                    if (!accepted) {
+                                      ref
+                                          .read(generationFlowProvider.notifier)
+                                          .clearPhotoConsent();
+                                    }
+                                  },
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Я разрешаю загрузить и обработать это фото для создания AI-визуализации улыбки, включая хранение в Supabase и обработку через Fal.ai. Это не медицинская рекомендация.',
+                                ),
+                                Wrap(
+                                  spacing: 4,
+                                  children: [
+                                    TextButton(
+                                      onPressed: () => _openDocument(_privacyUri),
+                                      child: const Text('Политика'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _openDocument(_termsUri),
+                                      child: const Text('Соглашение'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_consentError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        _consentError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
@@ -92,15 +213,19 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: FilledButton(
-                          onPressed:
-                              canContinue ? () => context.push('/styles') : null,
-                          child: const Text('Продолжить'),
+                          onPressed: canContinue ? _continue : null,
+                          child: _recordingConsent
+                              ? const SizedBox.square(
+                                  dimension: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Продолжить'),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
     );
   }

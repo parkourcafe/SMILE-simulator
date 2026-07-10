@@ -21,6 +21,7 @@ from app.routers import (
     generate,
     leads,
     packs,
+    photo_consents,
     price_estimates,
     styles,
     webhooks,
@@ -57,6 +58,7 @@ app.include_router(packs.router, prefix="/v1")
 app.include_router(clinics.router, prefix="/v1")
 app.include_router(price_estimates.router, prefix="/v1")
 app.include_router(leads.router, prefix="/v1")
+app.include_router(photo_consents.router, prefix="/v1")
 app.include_router(admin.router, prefix="/v1")
 app.include_router(webhooks.router, prefix="/v1")
 

@@ -33,6 +33,66 @@ class _RecordingAdapter implements HttpClientAdapter {
 }
 
 void main() {
+  test('createPhotoConsent requests a server-issued upload path', () async {
+    final adapter = _RecordingAdapter(
+      statusCode: 201,
+      body: {
+        'id': '10000000-0000-0000-0000-000000000001',
+        'consent_version': 'photo-beta-2026-07-10',
+        'consent_locale': 'ru',
+        'consented_at': '2026-07-10T08:00:00Z',
+        'upload_path':
+            '00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000001_original',
+      },
+    );
+    final dio = Dio(BaseOptions(baseUrl: 'https://api.example.test/v1'));
+    dio.httpClientAdapter = adapter;
+    final client = ApiClient(dio: dio);
+
+    final receipt = await client.createPhotoConsent(
+      consentGiven: true,
+      consentVersion: 'photo-beta-2026-07-10',
+      consentLocale: 'ru',
+    );
+
+    expect(adapter.request.path, '/api/photo-consents');
+    expect(adapter.request.data, {
+      'consent_given': true,
+      'consent_version': 'photo-beta-2026-07-10',
+      'consent_locale': 'ru',
+    });
+    expect(receipt.id, '10000000-0000-0000-0000-000000000001');
+    expect(receipt.consentedAt.toUtc(), DateTime.utc(2026, 7, 10, 8));
+  });
+
+  test('startGeneration binds the photo path to its consent receipt', () async {
+    final adapter = _RecordingAdapter(
+      statusCode: 202,
+      body: {
+        'id': '20000000-0000-0000-0000-000000000001',
+        'status': 'pending',
+      },
+    );
+    final dio = Dio(BaseOptions(baseUrl: 'https://api.example.test/v1'));
+    dio.httpClientAdapter = adapter;
+    final client = ApiClient(dio: dio);
+
+    await client.startGeneration(
+      styleId: '30000000-0000-0000-0000-000000000001',
+      photoConsentId: '10000000-0000-0000-0000-000000000001',
+      originalPhotoPath:
+          '00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000001_original',
+    );
+
+    expect(adapter.request.path, '/api/generate');
+    expect(adapter.request.data, {
+      'style_id': '30000000-0000-0000-0000-000000000001',
+      'photo_consent_id': '10000000-0000-0000-0000-000000000001',
+      'original_photo_path':
+          '00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000001_original',
+    });
+  });
+
   test('submitLead sends consent and a stable idempotency key', () async {
     final adapter = _RecordingAdapter(
       statusCode: 201,

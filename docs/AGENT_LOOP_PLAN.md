@@ -45,9 +45,9 @@ production system.
 | Website forms | Frontend fallback works; migration `0008` and consent metadata are merged; remote apply is pending | Open |
 | Legal | Internal EN drafts and a release checklist exist; operator facts are unresolved | Blocked on facts |
 | Phase 0 | Harness and real MediaPipe landmark detection are operational locally | Blocked on approved inputs/key |
-| Backend | FastAPI, modern Supabase JWT/key guards, and mock journey exist; production container/integrations are not ready | Open |
-| Flutter | Screen shell exists; OTP, clinics, and lead submission remain incomplete | Open |
-| Retention | 30-day setting exists; hard-delete automation is not implemented | Release blocker |
+| Backend | Production image/readiness, JWT guards, leads, retention, and pre-upload consent contract are implemented; Railway deployment is pending | Open |
+| Flutter | OTP, clinics, leads, verified photo deletion, and the pre-upload consent gate are implemented; real-device E2E is pending | Open |
+| Retention | Retryable hard deletion and the 30-day job exist; remote migration and Railway cron are pending | Release blocker |
 | Beta | Not started | Open |
 
 ## Gate 1 - Website forms and Supabase
@@ -106,6 +106,11 @@ production system.
 7. Verify that consent is unchecked by default and that the exact accepted version is
    stored.
 8. Record legal approval and release version in the repo.
+
+The code path uses migration `0012_photo_processing_consent.sql`: the authenticated
+API records the accepted version and issues the exact private upload path before the
+client can upload a selfie. This remains release evidence only after remote migration,
+Flutter CI, and a real OTP/upload smoke test pass.
 
 ### Exit evidence
 

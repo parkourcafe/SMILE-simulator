@@ -58,3 +58,7 @@ documents. Publication can proceed when all operator placeholders are resolved a
 technical behavior matches the text. Real-user photo beta requires the retention job,
 data-subject request flow, and jurisdiction-specific hosting decision.
 
+Implementation note: the app/API contract and migration
+`0012_photo_processing_consent.sql` now prepare a server-issued receipt before the
+private upload path is returned. Keep the checkbox open until that migration, the
+published documents, Flutter CI, and a production OTP/upload test are all verified.

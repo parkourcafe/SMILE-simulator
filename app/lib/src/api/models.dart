@@ -66,6 +66,31 @@ class Generation {
       );
 }
 
+class PhotoConsentReceipt {
+  final String id;
+  final String consentVersion;
+  final String consentLocale;
+  final DateTime consentedAt;
+  final String uploadPath;
+
+  PhotoConsentReceipt({
+    required this.id,
+    required this.consentVersion,
+    required this.consentLocale,
+    required this.consentedAt,
+    required this.uploadPath,
+  });
+
+  factory PhotoConsentReceipt.fromJson(Map<String, dynamic> j) =>
+      PhotoConsentReceipt(
+        id: j['id'] as String,
+        consentVersion: j['consent_version'] as String,
+        consentLocale: j['consent_locale'] as String,
+        consentedAt: DateTime.parse(j['consented_at'] as String),
+        uploadPath: j['upload_path'] as String,
+      );
+}
+
 class PackOption {
   final String packType;
   final int generationsTotal;
