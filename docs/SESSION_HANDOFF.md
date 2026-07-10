@@ -4,6 +4,7 @@
 > Updated: 08.07.2026 | 05:14 | Bali | Codex (premium website pass: typography, hero, editorial sections, mobile polish)
 > Updated: 10.07.2026 | 09:35 | Bali | Codex (ZubiLook RU/EN/UZ site deployed to Vercel production on zubilook.com)
 > Updated: 10.07.2026 | 14:37 | Bali | Codex (web synchronized, forms schema merged, Phase 0/backend production gates prepared)
+> Updated: 10.07.2026 | 18:55 | Bali | Codex (OTP/leads/retention and Railway production image merged; legal drafts preserved)
 > Для нового чата: прочитай CLAUDE.md (конституция), затем этот файл, затем продолжай с «Следующие шаги».
 
 ## Ссылки
@@ -15,17 +16,19 @@
 | Репозиторий | github.com/parkourcafe/smile-simulator |
 | Supabase проект | `htclwrotnmhtbrdisqcu` (https://htclwrotnmhtbrdisqcu.supabase.co) |
 | Деплой сайта | Vercel project `yulaboober/smile-simulator`; `vercel.json` публикует `web/` как output directory |
-| CI | `.github/workflows/ci.yml` — ruff+pytest (backend) + flutter analyze (app). Зелёный. |
+| CI | `.github/workflows/ci.yml` — backend lint/test + production Docker smoke + Flutter analyze/test. Зелёный. |
 | Детальный релизный план | `docs/AGENT_LOOP_PLAN.md` — гейты от форм до закрытой beta и решения по сторам. |
+| Юридический release gate | `docs/legal/LEGAL_RELEASE_GATE.md` + непубликуемые черновики policy/terms. |
 
 ## Состояние (что готово)
 
-- **Бэкенд** (`backend/`): FastAPI, ML-пайплайн (MediaPipe Tasks + маска рта + провайдеры), mock-first: `MOCK_INFERENCE/AUTH/PAYMENTS=true` по умолчанию — всё работает без ключей. 43 теста зелёные, `make check` проходит.
-- **Приложение** (`app/`): Flutter, 16 экранов, v1.1-фичи: generation theater, action-locked paywall, cost-anchor, live pre-check (advisory-заглушка, контракт готов), before/after слайдер. `flutter analyze` зелёный в CI.
-- **База** (Supabase): 8 таблиц + сиды (4 стиля, 10 клиник, price_estimates на 3 города). Миграции 0001–0007 применены. **Расширенная 0008 (waitlist + clinic_applications + версия/время согласия) — в `main`, НЕ применена.**
+- **Бэкенд** (`backend/`): FastAPI, ML-пайплайн, современная Supabase JWT/key-поддержка, idempotent leads, retryable hard deletion + 30-day retention job. 74 теста зелёные. Production Railway image запускается non-root, использует dynamic `PORT`, pinned dependency lock и проверенный Face Landmarker; `/health` и dependency-aware `/ready` покрыты CI.
+- **Приложение** (`app/`): Flutter, реальные Supabase phone OTP request/verify/session guards, список активных клиник из API и отдельное согласие + UUID idempotency для одного лида на одну клинику. Локальный mock OTP остаётся только без production config. `flutter analyze` и `flutter test` зелёные в CI; реальный SMS E2E ещё не проведён.
+- **База** (Supabase): numbered migrations `0001`–`0010` лежат в `main`. `0008` добавляет waitlist/clinic applications + consent metadata, `0009` — photo retention/tombstones, `0010` — lead consent/security/idempotency. Удалённое состояние сейчас не проверено; `0008`–`0010` нельзя считать применёнными до проверки через Supabase-коннектор. `seed_dev.sql` содержит фиктивные клиники и запрещён для production.
 - **Hero-сайт** (`web/index.html`): бренд ZubiLook, RU/EN/UZ переключатель, тёмный кинематографичный, AIDA, 2 AI-видео + 4 AI-фото (AI-визуализация, честные дисклеймеры), формы «Ранний доступ» + «Клиника-партнёр». Premium-pass применён: Cormorant Garamond + Onest, product-first hero, editorial timeline/ledger вместо части card grids, mobile hero rules, локальные медиа в `web/assets/`. Production deploy на Vercel: `https://www.zubilook.com/`. Формы подготовлены к Supabase REST, но `SUPABASE_ANON_KEY` ещё пустой до применения `0008`.
 - **Phase 0** (спайк качества FLUX): скрипт `scripts/phase0/run_spike.py`, scorecard и реальный MediaPipe CPU-путь готовы; локальный smoke прошёл с `face_approximate=false`. Настоящий Go/No-Go НЕ проведён: нужно повторно указать папку ровно с 10 согласованными селфи и установить локальный `FAL_API_KEY`.
-- **Backend security gate**: PR #9 слит. Supabase Auth поддерживает ES256/RS256 JWKS с legacy HS256 fallback и новые publishable/secret keys; wildcard CORS закрыт; production-старт с mock auth/default admin key запрещён. CI зелёный.
+- **Backend release gates**: PR #9 (auth/config), #11 (photo retention), #13 (lead security), #14 (Flutter clinic lead path) и #15 (Railway image/readiness) слиты. `APP_ENV=production` запрещает все mocks, неверную модель, отсутствующие service credentials, unsafe CORS и отсутствие канала уведомления клиники.
+- **Юридическое**: `docs/legal/` содержит release checklist и canonical EN drafts. Они не публикуются, пока не подтверждены оператор, адрес, юрисдикция, email, география beta, processor regions и regulator status.
 
 ## Известные ограничения окружения
 
@@ -35,22 +38,23 @@
 
 ## Следующие шаги (по приоритету)
 
-1. **Формы → база**: после реконнекта Supabase-коннектора применить `supabase/migrations/0008_waitlist.sql`, взять publishable/anon key, вписать в `SUPABASE_ANON_KEY` в начале `<script>` в `web/index.html`, затем сделать production deploy на Vercel. Проверить одну B2C и одну B2B заявку, consent metadata и запрет anon read/update/delete. `SUPABASE_URL` уже вписан; пока key пустой, формы работают через mailto-fallback на parkourcafe@gmail.com.
+1. **Supabase + формы**: после реконнекта коннектора проверить migration history и данные, затем применить `0008`, `0009`, `0010` по порядку (перед `0010` проверить дубли `user_id + generation_id`). Взять publishable/anon key, вписать его в `web/index.html`, задеплоить Vercel. Проверить одну B2C и одну B2B заявку, consent metadata и запрет anon read/update/delete.
 2. **Phase 0 спайк (Go/No-Go)**: Селена запускает локально на Mac: `cd smile-simulator/backend && pip install -e ".[ml]" && export FAL_API_KEY=<её ключ> && cd ../scripts/phase0 && python3 run_spike.py --input ~/phase0_selfies --output ~/phase0_out --styles natural_white`. Гейт: средний ≥3.5/5, ни один критерий <2.0.
-3. **Railway деплой бэкенда** → реальные генерации из приложения (`MOCK_INFERENCE=false` + FAL_API_KEY в env).
-4. **Цены**: значения в `price_estimates` — team estimates; заменить на данные клиник до партнёрских встреч.
-5. **Юридическое**: политика конфиденциальности + оферта (в футере сайта «в подготовке» — release blocker).
+3. **Юридическое**: получить реквизиты из `docs/legal/LEGAL_RELEASE_GATE.md`, подтвердить реальные регионы/процессоры и legal review; затем выпустить RU/EN/UZ страницы и заменить футер/ссылки согласия. Это release blocker.
+4. **Railway staging**: Root Directory `/backend`, config `/backend/railway.json`; внести secrets и проверить `/health` + `/ready` только после миграций. Production promotion — после Phase 0 GO, legal gate, approved clinic и real OTP/lead smoke.
+5. **Реальный mobile E2E**: включить Supabase Phone Auth/SMS provider/rate limits/CAPTCHA, собрать Flutter с publishable key + Railway API URL, проверить OTP → generation → clinic → lead → delete/retention.
+6. **Цены**: значения в `price_estimates` — team estimates; заменить на подтверждённые данные клиник до партнёрских встреч.
 
 Полная последовательность, входные зависимости и exit evidence: `docs/AGENT_LOOP_PLAN.md`.
 
 ## Секреты (никогда не коммитить)
 
-- FAL_API_KEY — у Селены (выдавался в чате, хранить в `.env` локально / Railway env).
+- FAL_API_KEY — отсутствует в текущем окружении; получить из Fal.ai dashboard и хранить только локально / в Railway secret env.
 - Supabase secret/service-role key и legacy JWT secret — в дашборде проекта, серверная сторона only.
 - Публичный publishable/anon key — МОЖНО в `web/index.html` и Flutter-клиенте.
 
 ## Рабочие правила сессии (сверх CLAUDE.md)
 
-- Ветки разработки: `claude/*`; в main — только через PR + мёрдж + проверка файлов на main.
+- Ветки разработки: `codex/*` (старые `claude/*` допустимы); в main — только через PR + мёрдж + проверка файлов на main.
 - Header каждого сообщения Селене: `DD.MM.YYYY | HH:MM | Bali`, язык — русский.
 - Генерация медиа — Higgsfield MCP (kling3_0 видео / soul_2 + nano_banana_pro фото); показывать через job_display; без читаемого текста в кадре; всегда дисклеймер «AI-визуализация, не клинический результат».
