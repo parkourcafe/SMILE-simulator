@@ -67,6 +67,7 @@ def test_generate_requires_auth_when_mock_auth_off():
             "/v1/api/generate",
             json={
                 "style_id": "00000000-0000-0000-0000-000000000000",
+                "photo_consent_id": "00000000-0000-0000-0000-000000000002",
                 "original_photo_path": "u/x.png",
             },
         )

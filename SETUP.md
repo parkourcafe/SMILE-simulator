@@ -20,7 +20,9 @@ need Supabase — see step 1.
 
 A dedicated project URL is configured as `htclwrotnmhtbrdisqcu`
 (`https://htclwrotnmhtbrdisqcu.supabase.co`). Do not assume its migration state:
-verify and apply numbered migrations `0001` through `0010` in order before deploy.
+verify and apply numbered migrations `0001` through `0012` in order before deploy.
+Do not skip `0011_auth_user_provisioning.sql` or
+`0012_photo_processing_consent.sql`.
 
 Put these in `backend/.env` (copy from `.env.example`):
 
@@ -58,6 +60,18 @@ flutter run \
 When no Supabase values are compiled in, the local-only mock OTP is `000000` and
 the API client sends `mock-dev-token`. A production build must include the real
 public values; the backend independently rejects mock auth in production.
+
+Migration `0011_auth_user_provisioning.sql` backfills existing Auth users and keeps
+`public.users` synchronized after phone/email changes. Verify after a real OTP signup
+that the same UUID exists in both `auth.users` and `public.users` before testing quota.
+
+Migration `0012_photo_processing_consent.sql` creates server-issued, per-photo consent
+receipts. The app records a receipt through the authenticated API before it receives
+the private Storage path; generation rejects a receipt owned by another user, an old
+consent version, or a different path. The same migration replaces the broad owner-write
+Storage policy: authenticated clients can upload/update only the original object named
+by a current receipt; backend service credentials remain responsible for results,
+masks, and deletion.
 
 Migration `0009_photo_retention.sql` makes photo deletion retryable. After it is
 applied, configure a daily Railway cron using the same backend image:
@@ -100,7 +114,7 @@ SHA-256 checksum. `APP_ENV=production` refuses to start with any mock service, a
 missing/changed model, missing Supabase/Fal.ai/YooKassa credentials, default admin
 key, unsafe CORS, or no clinic notification channel.
 
-Promotion to production is allowed only after migrations `0008`–`0010`, Phase 0 GO,
+Promotion to production is allowed only after migrations `0008`–`0012`, Phase 0 GO,
 real OTP, one approved clinic, legal publication, and staging smoke tests. Roll back
 by selecting the previous successful Railway deployment; rotate any credential that
 appeared in logs or was shared outside the Railway secret store.
