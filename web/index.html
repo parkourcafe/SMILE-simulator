@@ -931,15 +931,15 @@
         <p class="fh">Пришлём ссылку в день запуска. Никакого спама.</p>
         <div class="field">
           <label for="u-name">Имя</label>
-          <input id="u-name" name="name" type="text" autocomplete="name" required>
+          <input id="u-name" name="name" type="text" autocomplete="name" maxlength="120" required>
         </div>
         <div class="field">
           <label for="u-contact">Телефон или email</label>
-          <input id="u-contact" name="contact" type="text" autocomplete="email" required>
+          <input id="u-contact" name="contact" type="text" autocomplete="email" maxlength="200" required>
         </div>
         <div class="field">
           <label for="u-city">Город</label>
-          <input id="u-city" name="city" type="text" autocomplete="address-level2">
+          <input id="u-city" name="city" type="text" autocomplete="address-level2" maxlength="120">
         </div>
         <div class="field">
           <label>Интерес</label>
@@ -950,7 +950,7 @@
         </div>
         <div class="field">
           <label for="u-comment">Комментарий (необязательно)</label>
-          <textarea id="u-comment" name="comment"></textarea>
+          <textarea id="u-comment" name="comment" maxlength="1000"></textarea>
         </div>
         <label class="consent">
           <input type="checkbox" name="consent" required>
@@ -966,27 +966,27 @@
         <p class="fh">Пилот для 2–3 клиник: лиды с выбранным стилем улыбки, оплата за квалифицированный лид.</p>
         <div class="field">
           <label for="c-name">Название клиники</label>
-          <input id="c-name" name="clinic_name" type="text" required>
+          <input id="c-name" name="clinic_name" type="text" maxlength="200" required>
         </div>
         <div class="field">
           <label for="c-city">Город</label>
-          <input id="c-city" name="city" type="text">
+          <input id="c-city" name="city" type="text" maxlength="120">
         </div>
         <div class="field">
           <label for="c-person">Контактное лицо и роль</label>
-          <input id="c-person" name="contact_person" type="text" placeholder="Имя, должность">
+          <input id="c-person" name="contact_person" type="text" maxlength="160" placeholder="Имя, должность">
         </div>
         <div class="field">
           <label for="c-phone">Телефон</label>
-          <input id="c-phone" name="phone" type="tel" autocomplete="tel" required>
+          <input id="c-phone" name="phone" type="tel" autocomplete="tel" maxlength="40" required>
         </div>
         <div class="field">
           <label for="c-email">Email</label>
-          <input id="c-email" name="email" type="email" autocomplete="email">
+          <input id="c-email" name="email" type="email" autocomplete="email" maxlength="254">
         </div>
         <div class="field">
           <label for="c-flow">Средний поток заявок сейчас (необязательно)</label>
-          <input id="c-flow" name="flow" type="text" placeholder="например, 30 заявок в месяц">
+          <input id="c-flow" name="flow" type="text" maxlength="120" placeholder="например, 30 заявок в месяц">
         </div>
         <div class="field">
           <label for="c-interest">Интерес</label>
@@ -998,7 +998,7 @@
         </div>
         <div class="field">
           <label for="c-msg">Сообщение</label>
-          <textarea id="c-msg" name="message"></textarea>
+          <textarea id="c-msg" name="message" maxlength="2000"></textarea>
         </div>
         <label class="consent">
           <input type="checkbox" name="consent" required>
@@ -1042,6 +1042,7 @@
   var SUPABASE_URL = "https://htclwrotnmhtbrdisqcu.supabase.co";
   var SUPABASE_ANON_KEY = ""; // public anon key (safe to embed)
   var FALLBACK_EMAIL = "parkourcafe@gmail.com";
+  var CONSENT_VERSION = "landing-beta-2026-07-10";
   var currentLang = "ru";
   var COPY = {
     ru: {
@@ -1857,6 +1858,9 @@
             city: d.city || null,
             interest: d.interest || 'app',
             comment: d.comment || null,
+            locale: currentLang,
+            consent_given: d.consent === 'on',
+            consent_version: CONSENT_VERSION,
             source: 'hero'
           });
           if (r.ok) { msg(fu, copy().messages.userOk, true); fu.reset(); return; }
@@ -1886,6 +1890,9 @@
             monthly_flow: d.flow || null,
             interest: d.interest || 'pilot',
             message: d.message || null,
+            locale: currentLang,
+            consent_given: d.consent === 'on',
+            consent_version: CONSENT_VERSION,
             source: 'hero'
           });
           if (r.ok) { msg(fc, copy().messages.clinicOk, true); fc.reset(); return; }
