@@ -1,19 +1,22 @@
 import 'package:dio/dio.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/env.dart';
 import 'models.dart';
+
+typedef AccessTokenProvider = String? Function();
 
 /// Typed client for the API gateway. Attaches the Supabase JWT to every request.
 ///
 /// The generative inference API is NEVER called from the client — only these
 /// gateway endpoints (CLAUDE.md critical rule).
 class ApiClient {
-  ApiClient([Dio? dio]) : _dio = dio ?? Dio(BaseOptions(baseUrl: Env.apiBaseUrl)) {
+  ApiClient({Dio? dio, AccessTokenProvider? accessTokenProvider})
+      : _dio = dio ?? Dio(BaseOptions(baseUrl: Env.apiBaseUrl)),
+        _accessTokenProvider = accessTokenProvider ?? _noAccessToken {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          final token = Supabase.instance.client.auth.currentSession?.accessToken;
+          final token = _accessTokenProvider();
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
@@ -24,6 +27,9 @@ class ApiClient {
   }
 
   final Dio _dio;
+  final AccessTokenProvider _accessTokenProvider;
+
+  static String? _noAccessToken() => null;
 
   // --- Styles ---------------------------------------------------------------
   Future<List<Style>> listStyles() async {

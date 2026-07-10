@@ -12,25 +12,23 @@ Future<void> main() async {
   if (Env.isConfigured) {
     await Supabase.initialize(
       url: Env.supabaseUrl,
-      // Legacy anon key until the publishable-keys migration.
-      // ignore: deprecated_member_use
-      anonKey: Env.supabaseAnonKey,
+      publishableKey: Env.supabasePublicKey,
     );
   }
 
   runApp(const ProviderScope(child: SmileSimulatorApp()));
 }
 
-class SmileSimulatorApp extends StatelessWidget {
+class SmileSimulatorApp extends ConsumerWidget {
   const SmileSimulatorApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'AI Smile Simulator',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      routerConfig: appRouter,
+      routerConfig: ref.watch(appRouterProvider),
     );
   }
 }

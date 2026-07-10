@@ -1,24 +1,29 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../features/auth/auth_service.dart';
 import '../features/upload/precheck.dart';
 
+/// Phone-auth session. Without compile-time Supabase config this uses the explicit
+/// local OTP flow; production builds use Supabase sessions.
+final authServiceProvider = ChangeNotifierProvider<AuthService>((ref) => AuthService());
+
+/// Phone currently waiting for OTP verification. Kept out of URLs and logs.
+final pendingOtpPhoneProvider = StateProvider<String?>((ref) => null);
+
 /// Single API client instance.
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
+final apiClientProvider = Provider<ApiClient>((ref) {
+  final auth = ref.watch(authServiceProvider);
+  return ApiClient(accessTokenProvider: () => auth.accessToken);
+});
 
 /// On-device photo pre-check backend (advisory; server stays authoritative).
 final faceProbeProvider = Provider<FaceProbe>((ref) => const AdvisoryFaceProbe());
 
-/// Auth state stream from Supabase (drives router redirects).
-final authStateProvider = StreamProvider<AuthState>(
-  (ref) => Supabase.instance.client.auth.onAuthStateChange,
-);
-
 /// Whether the user is currently signed in.
 final isAuthedProvider = Provider<bool>((ref) {
-  return Supabase.instance.client.auth.currentSession != null;
+  return ref.watch(authServiceProvider).isSignedIn;
 });
 
 /// Available dental styles (loaded for the style selector).
