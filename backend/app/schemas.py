@@ -54,6 +54,20 @@ class RetryRequest(BaseModel):
     style_id: UUID | None = None  # optionally retry with a different style
 
 
+class PhotoDeletionOut(BaseModel):
+    generation_id: UUID
+    status: Literal["deleted", "pending"]
+    object_count: int
+
+
+class PhotoDeletionSummary(BaseModel):
+    requested: int
+    deleted: int
+    pending: int
+    failed: int
+    objects_requested: int
+
+
 # --- Styles -----------------------------------------------------------------
 class StyleOut(BaseModel):
     id: UUID

@@ -32,6 +32,10 @@ class FakeSupabase:
 
     async def update(self, table, *, filters, patch):
         self.updates.append((table, filters, patch))
+        generation_id = filters.get("id", "").removeprefix("eq.")
+        for row in self.rows:
+            if not generation_id or str(row.get("id")) == generation_id:
+                row.update(patch)
         return [patch]
 
     async def remove_objects(self, paths):
@@ -177,6 +181,57 @@ def test_generation_rejects_unowned_or_unsafe_photo_paths(path):
 
 def test_generation_accepts_user_owned_photo_path():
     _validate_owned_photo_path("user-1/uploads/photo.jpg", "user-1")
+
+
+@pytest.mark.asyncio
+async def test_user_delete_returns_verified_storage_status(monkeypatch):
+    generation_id = "0bc2b9e6-c910-4f3c-b86b-a144313805f7"
+    sb = FakeSupabase([_row(id=generation_id)])
+    monkeypatch.setattr(generate, "get_supabase", lambda: sb)
+
+    receipt = await generate.delete_generation(
+        generation_id,
+        SimpleNamespace(id="user-1"),
+    )
+
+    assert receipt.status == "deleted"
+    assert receipt.object_count == 3
+
+
+@pytest.mark.asyncio
+async def test_user_delete_reports_retryable_storage_failure_as_pending(monkeypatch):
+    generation_id = "1a6ee371-9280-480b-9fd8-8506b50be585"
+    sb = FakeSupabase([_row(id=generation_id)], fail_remove=True)
+    monkeypatch.setattr(generate, "get_supabase", lambda: sb)
+
+    receipt = await generate.delete_generation(
+        generation_id,
+        SimpleNamespace(id="user-1"),
+    )
+
+    assert receipt.status == "pending"
+    assert sb.rows[0]["deleted_at"] is not None
+    assert sb.rows[0]["photo_deletion_pending"] is True
+
+
+@pytest.mark.asyncio
+async def test_user_can_request_deletion_of_all_generation_photos(monkeypatch):
+    sb = FakeSupabase(
+        [
+            _row(id="6dcfdd9d-68f9-4104-89f0-2d0315e7274e"),
+            _row(id="e7049b90-ff74-40fb-b5ed-bfc90f5927d3"),
+        ]
+    )
+    monkeypatch.setattr(generate, "get_supabase", lambda: sb)
+
+    summary = await generate.delete_all_generation_photos(SimpleNamespace(id="user-1"))
+
+    assert summary.requested == 2
+    assert summary.deleted == 2
+    assert summary.pending == 0
+    assert summary.failed == 0
+    assert summary.objects_requested == 6
+    assert sb.select_filters["user_id"] == "eq.user-1"
 
 
 class ProcessingSupabase:

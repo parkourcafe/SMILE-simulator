@@ -167,3 +167,49 @@ class LeadReceipt {
         status: j['status'] as String,
       );
 }
+
+class PhotoDeletionReceipt {
+  final String generationId;
+  final String status;
+  final int objectCount;
+
+  PhotoDeletionReceipt({
+    required this.generationId,
+    required this.status,
+    required this.objectCount,
+  });
+
+  bool get isPending => status == 'pending';
+
+  factory PhotoDeletionReceipt.fromJson(Map<String, dynamic> j) =>
+      PhotoDeletionReceipt(
+        generationId: j['generation_id'] as String,
+        status: j['status'] as String,
+        objectCount: j['object_count'] as int,
+      );
+}
+
+class PhotoDeletionSummary {
+  final int requested;
+  final int deleted;
+  final int pending;
+  final int failed;
+  final int objectsRequested;
+
+  PhotoDeletionSummary({
+    required this.requested,
+    required this.deleted,
+    required this.pending,
+    required this.failed,
+    required this.objectsRequested,
+  });
+
+  factory PhotoDeletionSummary.fromJson(Map<String, dynamic> j) =>
+      PhotoDeletionSummary(
+        requested: j['requested'] as int,
+        deleted: j['deleted'] as int,
+        pending: j['pending'] as int,
+        failed: j['failed'] as int,
+        objectsRequested: j['objects_requested'] as int,
+      );
+}

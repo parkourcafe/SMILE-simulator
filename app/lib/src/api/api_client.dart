@@ -79,6 +79,16 @@ class ApiClient {
         .toList();
   }
 
+  Future<PhotoDeletionReceipt> deleteGeneration(String id) async {
+    final resp = await _dio.delete('/api/generate/$id');
+    return PhotoDeletionReceipt.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  Future<PhotoDeletionSummary> deleteAllGenerationPhotos() async {
+    final resp = await _dio.delete('/api/generate');
+    return PhotoDeletionSummary.fromJson(resp.data as Map<String, dynamic>);
+  }
+
   // --- Packs ----------------------------------------------------------------
   Future<List<PackOption>> availablePacks({String currency = 'RUB'}) async {
     final resp = await _dio.get('/api/packs/available',
