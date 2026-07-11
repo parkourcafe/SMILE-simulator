@@ -7,7 +7,7 @@
 <meta name="description" content="ZubiLook превращает селфи в AI-визуализацию возможной улыбки, помогает сравнить стили и отправить заявку в клинику для точной оценки.">
 <link rel="canonical" href="https://zubilook.com/">
 <link rel="manifest" href="site.webmanifest">
-<link rel="icon" href="assets/zubilook-icon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/zubilook-icon-192.png" type="image/png">
 <meta name="theme-color" content="#0A0A0B">
 <meta name="application-name" content="ZubiLook">
 <meta name="apple-mobile-web-app-title" content="ZubiLook">
@@ -477,6 +477,9 @@
   }
   footer .cols { display: flex; justify-content: space-between; gap: 36px; flex-wrap: wrap; }
   footer .disc { max-width: 46em; line-height: 1.7; }
+  footer .legal-links { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+  footer .legal-links a,
+  .consent a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 
   /* reveal on scroll */
   .reveal { opacity: 0; transform: translateY(16px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
@@ -954,7 +957,7 @@
         </div>
         <label class="consent">
           <input type="checkbox" name="consent" required>
-          <span>Согласен(на) на обработку данных для связи по заявке.</span>
+          <span>Согласен(на) на обработку данных для связи по заявке, принимаю <a href="privacy.html" target="_blank" rel="noopener">политику конфиденциальности</a> и <a href="terms.html" target="_blank" rel="noopener">пользовательское соглашение</a>.</span>
         </label>
         <button class="btn btn-primary" type="submit">Получить ранний доступ</button>
         <div class="form-msg" role="status" aria-live="polite"></div>
@@ -1002,7 +1005,7 @@
         </div>
         <label class="consent">
           <input type="checkbox" name="consent" required>
-          <span>Согласен(на) на обработку данных для связи по заявке.</span>
+          <span>Согласен(на) на обработку данных для связи по заявке, принимаю <a href="privacy.html" target="_blank" rel="noopener">политику конфиденциальности</a> и <a href="terms.html" target="_blank" rel="noopener">пользовательское соглашение</a>.</span>
         </label>
         <button class="btn btn-ghost" type="submit">Отправить заявку клиники</button>
         <div class="form-msg" role="status" aria-live="polite"></div>
@@ -1024,8 +1027,10 @@
       <br><br>
       Фото обрабатываются с вашего согласия и используются только для создания визуализации.
       Заявка в клинику отправляется только после вашего действия.
-      <br><br>
-      Политика конфиденциальности и пользовательское соглашение — в подготовке к beta-запуску.
+      <div class="legal-links">
+        <a href="privacy.html">Политика конфиденциальности</a>
+        <a href="terms.html">Пользовательское соглашение</a>
+      </div>
     </div>
     <div>
       <div class="logo">ZubiLook<i>.</i></div>
@@ -1036,10 +1041,11 @@
 
 <script>
   // ---------- config: form storage ----------
-  // Supabase REST endpoint for the landing forms. Both values are public client
-  // configuration; RLS limits anonymous clients to consented inserts only.
+  // Supabase REST endpoint for the landing forms. The URL is public; the anon
+  // This is a public client key. Service-role credentials must never be placed
+  // in this page or exposed to the browser.
   var SUPABASE_URL = "https://htclwrotnmhtbrdisqcu.supabase.co";
-  var SUPABASE_ANON_KEY = "sb_publishable_-1lNUyiHUtyl88kTuc_gIQ_NvTzrZ2X";
+  var SUPABASE_ANON_KEY = "sb_publishable_-1lNUyiHUtyl88kTuc_gIQ_NvTzrZ2X"; // publishable key (safe to embed)
   var FALLBACK_EMAIL = "parkourcafe@gmail.com";
   var CONSENT_VERSION = "landing-beta-2026-07-10";
   var currentLang = "ru";
@@ -1188,7 +1194,7 @@
         userHelp: "Пришлём ссылку в день запуска. Никакого спама.",
         labels: ["Имя", "Телефон или email", "Город", "Интерес", "Комментарий (необязательно)"],
         radios: ["Я хочу попробовать приложение", "Я представляю клинику"],
-        consent: "Согласен(на) на обработку данных для связи по заявке.",
+        consent: "Согласен(на) на обработку данных для связи по заявке, принимаю <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">политику конфиденциальности</a> и <a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">пользовательское соглашение</a>.",
         userButton: "Получить ранний доступ",
         clinicTitle: "Стать клиникой-партнёром",
         clinicHelp: "Пилот для 2–3 клиник: лиды с выбранным стилем улыбки, оплата за квалифицированный лид.",
@@ -1209,7 +1215,7 @@
         subjectClinic: "ZubiLook — заявка клиники"
       },
       footer: {
-        html: "<strong style=\"color:var(--ink-2)\">Важно:</strong> ZubiLook создаёт AI-визуализацию возможного эстетического результата по селфи. Это не диагноз, не план лечения и не гарантия результата — итог зависит от консультации, диагностики и плана лечения у врача.<br><br>Фото обрабатываются с вашего согласия и используются только для создания визуализации. Заявка в клинику отправляется только после вашего действия.<br><br>Политика конфиденциальности и пользовательское соглашение — в подготовке к beta-запуску.",
+        html: "<strong style=\"color:var(--ink-2)\">Важно:</strong> ZubiLook создаёт AI-визуализацию возможного эстетического результата по селфи. Это не диагноз, не план лечения и не гарантия результата — итог зависит от консультации, диагностики и плана лечения у врача.<br><br>Фото обрабатываются с вашего согласия и используются только для создания визуализации. Заявка в клинику отправляется только после вашего действия.<div class=\"legal-links\"><a href=\"privacy.html\">Политика конфиденциальности</a><a href=\"terms.html\">Пользовательское соглашение</a></div>",
         status: "Продукт в стадии beta<br>© 2026"
       }
     },
@@ -1357,7 +1363,7 @@
         userHelp: "We will send the link on launch day. No spam.",
         labels: ["Name", "Phone or email", "City", "Interest", "Comment (optional)"],
         radios: ["I want to try the app", "I represent a clinic"],
-        consent: "I agree to data processing for follow-up about my request.",
+        consent: "I agree to data processing for follow-up about my request and accept the <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">Privacy Policy</a> and <a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">Terms of Use</a>.",
         userButton: "Get early access",
         clinicTitle: "Become a partner clinic",
         clinicHelp: "Pilot for 2–3 clinics: leads with selected smile style and payment per qualified lead.",
@@ -1378,7 +1384,7 @@
         subjectClinic: "ZubiLook — clinic request"
       },
       footer: {
-        html: "<strong style=\"color:var(--ink-2)\">Important:</strong> ZubiLook creates an AI visualization of a possible aesthetic result from a selfie. It is not a diagnosis, treatment plan, or result guarantee. The final outcome depends on consultation, diagnostics, and a doctor's treatment plan.<br><br>Photos are processed with your consent and used only to create the visualization. A clinic request is sent only after your action.<br><br>Privacy policy and user agreement are being prepared for beta launch.",
+        html: "<strong style=\"color:var(--ink-2)\">Important:</strong> ZubiLook creates an AI visualization of a possible aesthetic result from a selfie. It is not a diagnosis, treatment plan, or result guarantee. The final outcome depends on consultation, diagnostics, and a doctor's treatment plan.<br><br>Photos are processed with your consent and used only to create the visualization. A clinic request is sent only after your action.<div class=\"legal-links\"><a href=\"privacy.html\">Privacy Policy</a><a href=\"terms.html\">Terms of Use</a></div>",
         status: "Product in beta<br>© 2026"
       }
     },
@@ -1526,7 +1532,7 @@
         userHelp: "Ishga tushirish kuni havola yuboramiz. Spam bo‘lmaydi.",
         labels: ["Ism", "Telefon yoki email", "Shahar", "Qiziqish", "Izoh (ixtiyoriy)"],
         radios: ["Ilovani sinab ko‘rmoqchiman", "Men klinika vakiliman"],
-        consent: "So‘rov bo‘yicha bog‘lanish uchun ma’lumotlarimni qayta ishlashga roziman.",
+        consent: "So‘rov bo‘yicha bog‘lanish uchun ma’lumotlarimni qayta ishlashga roziman hamda <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">Maxfiylik siyosati</a> va <a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">Foydalanish shartlari</a>ni qabul qilaman.",
         userButton: "Erta kirish",
         clinicTitle: "Hamkor klinika bo‘lish",
         clinicHelp: "2–3 klinika uchun pilot: tanlangan tabassum uslubi bilan murojaatlar, malakali murojaat uchun to‘lov.",
@@ -1547,7 +1553,7 @@
         subjectClinic: "ZubiLook — klinika so‘rovi"
       },
       footer: {
-        html: "<strong style=\"color:var(--ink-2)\">Muhim:</strong> ZubiLook selfi asosida ehtimoliy estetik natijaning AI-vizualizatsiyasini yaratadi. Bu tashxis, davolash rejasi yoki natija kafolati emas — yakuniy natija konsultatsiya, diagnostika va shifokor davolash rejasiga bog‘liq.<br><br>Fotolar sizning roziligingiz bilan qayta ishlanadi va faqat vizualizatsiya yaratish uchun ishlatiladi. Klinika so‘rovi faqat sizning harakatingizdan keyin yuboriladi.<br><br>Maxfiylik siyosati va foydalanuvchi kelishuvi beta-ishga tushirishga tayyorlanmoqda.",
+        html: "<strong style=\"color:var(--ink-2)\">Muhim:</strong> ZubiLook selfi asosida ehtimoliy estetik natijaning AI-vizualizatsiyasini yaratadi. Bu tashxis, davolash rejasi yoki natija kafolati emas — yakuniy natija konsultatsiya, diagnostika va shifokor davolash rejasiga bog‘liq.<br><br>Fotolar sizning roziligingiz bilan qayta ishlanadi va faqat vizualizatsiya yaratish uchun ishlatiladi. Klinika so‘rovi faqat sizning harakatingizdan keyin yuboriladi.<div class=\"legal-links\"><a href=\"privacy.html\">Maxfiylik siyosati</a><a href=\"terms.html\">Foydalanish shartlari</a></div>",
         status: "Mahsulot beta bosqichida<br>© 2026"
       }
     }
@@ -1709,7 +1715,7 @@
     setText("#form-user .field:nth-of-type(4) > label", t.forms.labels[3]);
     setText('label[for="u-comment"]', t.forms.labels[4]);
     qa("#form-user .radio-row label").forEach(function (label, i) { setLabel(label, t.forms.radios[i]); });
-    setText("#form-user .consent span", t.forms.consent);
+    setHTML("#form-user .consent span", t.forms.consent);
     setText("#form-user button", t.forms.userButton);
 
     setText("#form-clinic h3", t.forms.clinicTitle);
@@ -1720,7 +1726,7 @@
     q("#c-person").placeholder = t.forms.clinicPlaceholders[0];
     q("#c-flow").placeholder = t.forms.clinicPlaceholders[1];
     qa("#c-interest option").forEach(function (opt, i) { if (t.forms.options[i]) opt.textContent = t.forms.options[i]; });
-    setText("#form-clinic .consent span", t.forms.consent);
+    setHTML("#form-clinic .consent span", t.forms.consent);
     setText("#form-clinic button", t.forms.clinicButton);
 
     setHTML("footer .disc", t.footer.html);
@@ -1906,6 +1912,13 @@
       }
     });
   })();
+
+  // ---------- PWA service worker ----------
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {});
+    });
+  }
 </script>
 </body>
 </html>
