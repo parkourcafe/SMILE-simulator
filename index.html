@@ -1,0 +1,1924 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>ZubiLook — AI-визуализация улыбки до визита в клинику</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="ZubiLook превращает селфи в AI-визуализацию возможной улыбки, помогает сравнить стили и отправить заявку в клинику для точной оценки.">
+<link rel="canonical" href="https://zubilook.com/">
+<link rel="manifest" href="site.webmanifest">
+<link rel="icon" href="assets/zubilook-icon-192.png" type="image/png">
+<meta name="theme-color" content="#0A0A0B">
+<meta name="application-name" content="ZubiLook">
+<meta name="apple-mobile-web-app-title" content="ZubiLook">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ZubiLook">
+<meta property="og:title" content="ZubiLook — AI-визуализация улыбки до визита в клинику">
+<meta property="og:description" content="Селфи → стиль → AI-визуализация «до/после» → заявка в клинику. Визуальный ориентир, не медицинское обещание.">
+<meta property="og:url" content="https://zubilook.com/">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Onest:wght@400;500;600;700&display=swap');
+
+  /* ============ tokens (committed dark cinematic — single theme) ============ */
+  :root {
+    color-scheme: dark;
+    --bg: #0A0A0B;
+    --bg-2: #111114;
+    --surface: rgba(255,255,255,0.06);
+    --surface-2: rgba(255,255,255,0.10);
+    --ink: #F7F3EA;
+    --ink-2: rgba(247,243,234,0.72);
+    --ink-3: rgba(247,243,234,0.5);
+    --accent: #F6DFA8;
+    --accent-2: #BFD7FF;
+    --accent-3: #7C2F3E;
+    --note: #D8C7A1;
+    --line: rgba(255,255,255,0.12);
+    --radius: 8px;
+    --ease: cubic-bezier(.22,.61,.36,1);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Onest", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::after {
+    content: ""; position: fixed; inset: 0; z-index: 999; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.012) 1px, transparent 1px);
+    background-size: 3px 3px, 5px 5px;
+    opacity: .42; mix-blend-mode: soft-light;
+  }
+  .display {
+    font-family: "Cormorant Garamond", Georgia, "Times New Roman", "Noto Serif", serif;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: .98;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { color: var(--ink); }
+  a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 88px 0; }
+  section.tight { padding: 64px 0; }
+  .kicker {
+    font-size: 12px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 14px;
+  }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  h2 { font-size: 44px; margin-bottom: 14px; }
+  .sub { color: var(--ink-2); max-width: 44em; margin: 0; }
+  .section-head { max-width: 720px; margin-bottom: 44px; }
+  @media (max-width: 900px) { h2 { font-size: 36px; } }
+  @media (max-width: 560px) { h2 { font-size: 31px; } section { padding: 58px 0; } section.tight { padding: 48px 0; } }
+
+  /* ============ header ============ */
+  header.site {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10,10,11,.82); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; }
+  .logo { font-family: Georgia, serif; font-size: 23px; color: var(--ink); letter-spacing: .01em; }
+  .logo i { font-style: normal; color: var(--accent); }
+  nav.top { display: flex; gap: 22px; align-items: center; font-size: 15px; }
+  nav.top a { color: var(--ink-2); position: relative; }
+  nav.top a:not(.btn)::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -5px; height: 1px;
+    background: var(--accent); transform: scaleX(0); transform-origin: right;
+    transition: transform .32s var(--ease);
+  }
+  nav.top a:not(.btn):hover::after { transform: scaleX(1); transform-origin: left; }
+  nav.top a:hover { color: var(--ink); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    border-radius: 12px; padding: 13px 24px; font-size: 15.5px; font-weight: 600;
+    border: 1px solid transparent; cursor: pointer;
+    position: relative; overflow: hidden;
+    transition: transform .18s var(--ease), background .18s var(--ease), border-color .18s var(--ease);
+  }
+  .btn::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(110deg, transparent 25%, rgba(255,255,255,.28) 50%, transparent 75%);
+    transform: translateX(-120%);
+    transition: transform .62s var(--ease);
+  }
+  .btn:hover::after { transform: translateX(120%); }
+  .btn > * { position: relative; z-index: 1; }
+  .btn-primary { background: var(--accent); color: #141310; }
+  .btn-primary:hover { transform: translateY(-1px); color: #141310; }
+  .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm { padding: 9px 18px; font-size: 14px; }
+  .lang-switch {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px; border: 1px solid var(--line); border-radius: 999px;
+    background: rgba(255,255,255,.04);
+  }
+  .lang-switch button {
+    appearance: none; border: 0; background: transparent; color: var(--ink-3);
+    border-radius: 999px; padding: 5px 8px; font: inherit; font-size: 12px;
+    line-height: 1; cursor: pointer; letter-spacing: .04em;
+  }
+  .lang-switch button:hover,
+  .lang-switch button.active {
+    background: var(--accent); color: #141310;
+  }
+  .burger {
+    display: none; background: none; border: 1px solid var(--line); color: var(--ink);
+    border-radius: 10px; padding: 8px 12px; font-size: 18px; line-height: 1; cursor: pointer;
+  }
+  .mobile-nav { display: none; border-top: 1px solid var(--line); padding: 14px 0 18px; }
+  .mobile-nav.open { display: block; }
+  .mobile-nav a { display: block; padding: 10px 0; color: var(--ink-2); font-size: 16px; }
+  .mobile-nav .lang-switch { margin: 10px 0 4px; }
+  @media (max-width: 860px) {
+    nav.top { display: none; }
+    .burger { display: block; }
+  }
+
+  /* ============ hero ============ */
+  .hero {
+    position: relative; overflow: hidden;
+    min-height: 760px;
+    display: grid;
+    align-items: end;
+    padding: 118px 0 74px;
+    background:
+      linear-gradient(180deg, rgba(10,10,11,.1), var(--bg) 100%),
+      var(--bg);
+  }
+  .hero-media { position: absolute; inset: 0; z-index: 0; }
+  .hero-media video {
+    width: 100%; height: 100%; object-fit: cover; object-position: center;
+    opacity: .68; filter: saturate(.9) contrast(1.04);
+  }
+  .hero-media .veil {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(90deg, rgba(10,10,11,.92), rgba(10,10,11,.62) 48%, rgba(10,10,11,.28)),
+      linear-gradient(180deg, rgba(10,10,11,.28), rgba(10,10,11,.72) 72%, var(--bg) 100%);
+  }
+  .hero > .wrap { position: relative; z-index: 1; }
+  .hero-grid { max-width: 760px; }
+
+  .hero h1 { font-size: 68px; margin: 20px 0 20px; max-width: 10.2em; }
+  .hero h1 em { font-style: italic; color: var(--accent); }
+  .hero .lede { font-size: 18.5px; color: var(--ink-2); max-width: 36em; margin: 0 0 30px; }
+  .eyebrow {
+    display: inline-block; font-size: 12px; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--ink-2); border: 1px solid var(--line); border-radius: 999px;
+    padding: 7px 15px; background: var(--surface);
+  }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .trust-line { margin-top: 20px; font-size: 13.5px; color: var(--note); max-width: 36em; }
+  .micro { margin-top: 8px; font-size: 12.5px; color: var(--ink-3); max-width: 36em; }
+  .hero-proof {
+    margin-top: 46px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    max-width: 760px;
+    border-top: 1px solid rgba(246,223,168,.22);
+    border-bottom: 1px solid rgba(246,223,168,.16);
+    background: rgba(10,10,11,.36);
+    backdrop-filter: blur(10px);
+  }
+  .hero-proof div { padding: 18px 20px; border-right: 1px solid rgba(246,223,168,.14); }
+  .hero-proof div:last-child { border-right: 0; }
+  .hero-proof span {
+    display: block; font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 25px; line-height: 1; color: var(--accent); margin-bottom: 8px;
+  }
+  .hero-proof strong { display: block; font-size: 14px; color: var(--ink); margin-bottom: 5px; }
+  .hero-proof p { margin: 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
+  @media (max-width: 900px) {
+    .hero { min-height: 690px; padding: 92px 0 56px; }
+    .hero h1 { font-size: 50px; }
+    .hero-media video { object-position: 60% center; }
+  }
+  @media (max-width: 640px) {
+    .hero { min-height: auto; padding: 74px 0 46px; }
+    .hero h1 { font-size: 39px; max-width: 9.6em; }
+    .hero .lede { font-size: 16.5px; }
+    .hero-media video { opacity: .5; object-position: 63% center; }
+    .hero-media .veil {
+      background:
+        linear-gradient(90deg, rgba(10,10,11,.94), rgba(10,10,11,.74) 64%, rgba(10,10,11,.44)),
+        linear-gradient(180deg, rgba(10,10,11,.18), rgba(10,10,11,.86) 78%, var(--bg) 100%);
+    }
+    .cta-row .btn { width: 100%; }
+    .hero-proof { grid-template-columns: 1fr; margin-top: 32px; }
+    .hero-proof div { border-right: 0; border-bottom: 1px solid rgba(246,223,168,.12); padding: 15px 16px; }
+    .hero-proof div:last-child { border-bottom: 0; }
+  }
+
+  /* entrance */
+  .rise { opacity: 0; transform: translateY(18px); animation: rise .8s var(--ease) forwards; }
+  .rise.d1 { animation-delay: .08s; } .rise.d2 { animation-delay: .18s; }
+  .rise.d3 { animation-delay: .28s; } .rise.d4 { animation-delay: .38s; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+
+  /* ============ generic cards & grids ============ */
+  .cards { display: grid; gap: 16px; }
+  .cards.c2 { grid-template-columns: repeat(2, 1fr); }
+  .cards.c3 { grid-template-columns: repeat(3, 1fr); }
+  .cards.c4 { grid-template-columns: repeat(4, 1fr); }
+  .cards.c5 { grid-template-columns: repeat(5, 1fr); }
+  @media (max-width: 1000px) { .cards.c5, .cards.c4 { grid-template-columns: repeat(2, 1fr); } .cards.c3 { grid-template-columns: 1fr; } }
+  @media (max-width: 560px) { .cards.c5, .cards.c4, .cards.c2 { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 24px 22px;
+  }
+  .card h3 { font-size: 17.5px; margin-bottom: 8px; }
+  .card p { margin: 0; font-size: 14.5px; color: var(--ink-2); }
+  .card .num {
+    font-family: Georgia, serif; font-style: italic; font-size: 26px; color: var(--accent);
+    display: block; margin-bottom: 8px;
+  }
+  .card .res { margin-top: 10px; font-size: 13px; color: var(--accent-2); }
+
+  .journey {
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .journey-step {
+    display: grid;
+    grid-template-columns: 92px minmax(0, .9fr) minmax(0, 1.15fr);
+    gap: 28px;
+    align-items: baseline;
+    padding: 26px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .journey-step:last-child { border-bottom: 0; }
+  .journey-step .num {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 46px; line-height: .8; color: var(--accent);
+  }
+  .journey-step h3 { font-size: 23px; margin: 0; }
+  .journey-step p { margin: 0; color: var(--ink-2); font-size: 15.5px; }
+  .journey-step .res { display: block; color: var(--accent-2); font-size: 13.5px; margin-top: 8px; }
+
+  .ledger {
+    display: grid;
+    grid-template-columns: .85fr 1.15fr;
+    gap: 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .ledger-row {
+    display: contents;
+  }
+  .ledger-row h3,
+  .ledger-row p {
+    margin: 0;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .ledger-row:last-child h3,
+  .ledger-row:last-child p { border-bottom: 0; }
+  .ledger-row h3 {
+    font-size: 20px;
+    padding-right: 28px;
+  }
+  .ledger-row p {
+    color: var(--ink-2);
+    padding-left: 28px;
+    border-left: 1px solid var(--line);
+  }
+
+  .trust-ledger {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,.035);
+  }
+  .trust-item {
+    padding: 26px;
+    min-height: 170px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .trust-item:nth-child(3n) { border-right: 0; }
+  .trust-item:nth-last-child(-n+3) { border-bottom: 0; }
+  .trust-item h3 { font-size: 19px; margin-bottom: 10px; }
+  .trust-item p { margin: 0; color: var(--ink-2); font-size: 14.5px; }
+  @media (max-width: 900px) {
+    .journey-step { grid-template-columns: 74px 1fr; gap: 18px; align-items: start; }
+    .journey-step p { grid-column: 2; }
+    .ledger { grid-template-columns: 1fr; }
+    .ledger-row { display: block; padding: 22px 0; border-bottom: 1px solid var(--line); }
+    .ledger-row:last-child { border-bottom: 0; }
+    .ledger-row h3,
+    .ledger-row p { padding: 0; border: 0; }
+    .ledger-row p { margin-top: 8px; border-left: 0; }
+    .trust-ledger { grid-template-columns: 1fr 1fr; }
+    .trust-item:nth-child(n) { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .trust-item:nth-child(2n) { border-right: 0; }
+    .trust-item:nth-last-child(-n+2) { border-bottom: 0; }
+  }
+  @media (max-width: 560px) {
+    .journey-step { grid-template-columns: 1fr; gap: 10px; padding: 22px 0; }
+    .journey-step p { grid-column: auto; }
+    .journey-step .num { font-size: 36px; }
+    .trust-ledger { grid-template-columns: 1fr; }
+    .trust-item:nth-child(n) { border-right: 0; border-bottom: 1px solid var(--line); min-height: auto; }
+    .trust-item:last-child { border-bottom: 0; }
+  }
+
+  /* problem section */
+  .versus { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 36px; }
+  @media (max-width: 800px) { .versus { grid-template-columns: 1fr; } }
+  .versus .col { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; }
+  .versus .col.now { background: linear-gradient(170deg, rgba(246,223,168,.10), rgba(246,223,168,.03)); border-color: rgba(246,223,168,.28); }
+  .versus h3 { font-size: 15px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 16px; }
+  .versus .col.now h3 { color: var(--accent); }
+  .versus ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  .versus li { display: flex; gap: 11px; font-size: 15.5px; color: var(--ink-2); }
+  .versus li .m { flex: none; }
+  .versus .old .m { color: var(--ink-3); }
+  .versus .now .m { color: var(--accent); }
+
+  /* before/after demo (real AI photo pair; gradients remain as fallback) */
+  .ba-demo {
+    position: relative; border-radius: 20px; overflow: hidden;
+    border: 1px solid var(--line); aspect-ratio: 3/2;
+    user-select: none; touch-action: none; cursor: ew-resize; max-width: 720px;
+  }
+  .ba-demo .layer { position: absolute; inset: 0; }
+  .ba-demo .before { background: linear-gradient(160deg, #3E3428, #241F18); }
+  .ba-demo .after { background: linear-gradient(160deg, #DCE7DF, #A9C4B4); clip-path: inset(0 0 0 var(--x, 50%)); }
+  .ba-demo .layer img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ba-demo .divider { position: absolute; top: 0; bottom: 0; left: var(--x, 50%); width: 2px; background: #fff; }
+  .ba-demo .handle {
+    position: absolute; top: 50%; left: var(--x, 50%); transform: translate(-50%,-50%);
+    width: 44px; height: 44px; border-radius: 50%; background: #F7F3EA; color: #141310;
+    display: grid; place-items: center; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    transition: box-shadow .2s var(--ease);
+  }
+  .ba-demo:hover .handle { box-shadow: 0 10px 30px rgba(0,0,0,.62), 0 0 0 6px rgba(246,223,168,.16); }
+  .ba-demo .lbl { position: absolute; top: 12px; font-size: 11px; letter-spacing: .13em; text-transform: uppercase; color: #fff; background: rgba(0,0,0,.4); padding: 4px 11px; border-radius: 999px; }
+  .ba-demo .lbl.b { left: 12px; } .ba-demo .lbl.a { right: 12px; }
+  .ba-note { margin-top: 12px; font-size: 13px; color: var(--ink-3); }
+
+  /* demo film */
+  .demo-grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; align-items: stretch; }
+  @media (max-width: 900px) { .demo-grid { grid-template-columns: 1fr; } }
+  .demo-shell {
+    border: 1px solid var(--line); border-radius: 22px; overflow: hidden;
+    background: #000; box-shadow: 0 40px 90px -40px rgba(0,0,0,.9);
+  }
+  .demo-shell video { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .demo-side {
+    border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--bg-2);
+  }
+  .demo-side img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .demo-shell.solo { max-width: 880px; }
+  .demo-shell.solo video { height: auto; }
+  .media-note { margin-top: 12px; font-size: 13px; color: var(--ink-3); max-width: 52em; }
+
+  .photo-card {
+    border-radius: 20px; overflow: hidden; border: 1px solid var(--line);
+    margin-bottom: 16px;
+  }
+  .photo-card img { display: block; width: 100%; height: auto; }
+
+  /* clinics band */
+  .band {
+    background: linear-gradient(170deg, var(--bg-2), #0C0C0F);
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  }
+  .split-2 { display: grid; grid-template-columns: 1.1fr .9fr; gap: 56px; align-items: start; }
+  .split-2 > * { min-width: 0; }
+  .audience-section { overflow: hidden; }
+  .audience-section + .audience-section { border-top: 0; }
+  .audience-section .split-2 { align-items: center; }
+  .audience-copy { position: relative; z-index: 2; }
+  .audience-copy .display { max-width: 11em; font-size: 42px; line-height: 1.03; }
+  .audience-media {
+    position: relative; z-index: 1;
+    display: grid; gap: 16px;
+  }
+  .audience-media .photo-card {
+    margin-bottom: 0;
+    aspect-ratio: 3 / 2;
+  }
+  .audience-media .photo-card img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .audience-card { width: 100%; padding: 28px; }
+  @media (max-width: 900px) { .split-2 { grid-template-columns: 1fr; gap: 36px; } }
+  @media (max-width: 900px) {
+    .audience-section .split-2 { align-items: start; }
+    .audience-copy .display { max-width: none; font-size: 36px; }
+  }
+  @media (max-width: 560px) {
+    .audience-copy .display { font-size: 31px; }
+    .audience-card { padding: 22px; }
+  }
+  ul.ticks { margin: 22px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  ul.ticks li { display: flex; gap: 12px; font-size: 16px; color: var(--ink-2); }
+  ul.ticks .tick { color: var(--accent); font-weight: 700; flex: none; }
+
+  /* FAQ */
+  details.faq {
+    border: 1px solid var(--line); border-radius: 14px; background: var(--surface);
+    padding: 0 22px; margin-bottom: 12px;
+  }
+  details.faq summary {
+    cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px;
+    padding: 19px 0; font-size: 16.5px; font-weight: 600;
+  }
+  details.faq summary::-webkit-details-marker { display: none; }
+  details.faq summary::after { content: "+"; color: var(--accent); font-size: 20px; flex: none; }
+  details.faq[open] summary::after { content: "–"; }
+  details.faq p { margin: 0 0 20px; color: var(--ink-2); font-size: 15px; max-width: 60em; }
+
+  /* forms */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .form-grid { grid-template-columns: 1fr; } }
+  form.lead {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 30px 28px;
+  }
+  form.lead h3 { font-size: 21px; margin-bottom: 6px; }
+  form.lead .fh { font-size: 14px; color: var(--ink-2); margin: 0 0 20px; }
+  .field { margin-bottom: 15px; }
+  .field label { display: block; font-size: 13.5px; color: var(--ink-2); margin-bottom: 6px; }
+  .field input, .field select, .field textarea {
+    width: 100%; background: rgba(0,0,0,.35); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 15px;
+    font-family: inherit;
+  }
+  .field textarea { min-height: 74px; resize: vertical; }
+  .radio-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .radio-row label { display: flex; gap: 8px; align-items: center; font-size: 14.5px; color: var(--ink-2); cursor: pointer; }
+  .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--ink-3); margin: 16px 0 18px; }
+  .consent input { margin-top: 3px; }
+  .form-msg { margin-top: 14px; font-size: 14px; }
+  .form-msg.ok { color: #9CC79A; }
+  .form-msg.err { color: #E3A9A0; }
+
+  /* footer */
+  footer.site {
+    border-top: 1px solid var(--line); padding: 48px 0 60px;
+    font-size: 13.5px; color: var(--ink-3); background: var(--bg-2);
+  }
+  footer .cols { display: flex; justify-content: space-between; gap: 36px; flex-wrap: wrap; }
+  footer .disc { max-width: 46em; line-height: 1.7; }
+  footer .legal-links { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+  footer .legal-links a,
+  .consent a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+
+  /* reveal on scroll */
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
+  .reveal.in { opacity: 1; transform: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .rise, .reveal { opacity: 1; transform: none; animation: none; transition: none; }
+    .btn::after, nav.top a::after, .ba-demo .handle { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= HEADER ================= -->
+<header class="site">
+  <div class="wrap">
+    <div class="nav-row">
+      <a class="logo" href="#top" aria-label="ZubiLook — на главную">ZubiLook<i>.</i></a>
+      <nav class="top" aria-label="Основная навигация">
+        <a href="#how">Как работает</a>
+        <a href="#patients">Для пациентов</a>
+        <a href="#clinics">Для клиник</a>
+        <a href="#trust">Доверие</a>
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button type="button" data-lang="ru">RU</button>
+          <button type="button" data-lang="en">EN</button>
+          <button type="button" data-lang="uz">UZ</button>
+        </div>
+        <a class="btn btn-primary btn-sm" href="#early-access">Получить ранний доступ</a>
+      </nav>
+      <button class="burger" aria-expanded="false" aria-controls="mnav" id="burger">☰<span class="sr-only"></span></button>
+    </div>
+    <div class="mobile-nav" id="mnav">
+      <a href="#how">Как работает</a>
+      <a href="#patients">Для пациентов</a>
+      <a href="#clinics">Для клиник</a>
+      <a href="#trust">Доверие</a>
+      <div class="lang-switch" role="group" aria-label="Language">
+        <button type="button" data-lang="ru">RU</button>
+        <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="uz">UZ</button>
+      </div>
+      <a class="btn btn-primary btn-sm" style="margin-top:10px" href="#early-access">Получить ранний доступ</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- ================= 1. CINEMATIC HERO ================= -->
+<!-- Generated media are pinned under web/assets so the landing page does not
+     depend on expiring generation-CDN links. -->
+<section class="hero" aria-label="Главный экран">
+  <div class="hero-media" aria-hidden="true">
+    <video muted loop playsinline preload="metadata" data-autoplay
+      poster="assets/demo-flow-poster.webp">
+      <source src="assets/demo-flow.mp4" type="video/mp4">
+    </video>
+    <div class="veil"></div>
+  </div>
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow rise">AI-визуализация улыбки · beta</span>
+      <h1 class="display rise d1">Увидьте, как может выглядеть <em>ваша улыбка</em>, до визита в клинику</h1>
+      <p class="lede rise d2">ZubiLook превращает селфи в AI-визуализацию возможной улыбки, помогает сравнить стили и отправить заявку в клинику для точной оценки.</p>
+      <div class="cta-row rise d3">
+        <a class="btn btn-primary" href="#early-access">Получить ранний доступ</a>
+        <a class="btn btn-ghost" href="#demo">Посмотреть демо</a>
+        <a class="btn btn-ghost" href="#clinics">Я представляю клинику</a>
+      </div>
+      <p class="trust-line rise d4">Это AI-визуализация, а не диагноз, план лечения или гарантия результата.</p>
+      <p class="micro rise d4">Фото используется для создания визуализации. Клиника получает заявку только после вашего действия.</p>
+      <div class="hero-proof rise d4" aria-label="Ключевые шаги ZubiLook">
+        <div>
+          <span>01</span>
+          <strong>Проверка селфи</strong>
+          <p>Свет, анфас, видимая улыбка — до генерации.</p>
+        </div>
+        <div>
+          <span>02</span>
+          <strong>До / после</strong>
+          <p>Четыре эстетики улыбки в понятном сравнении.</p>
+        </div>
+        <div>
+          <span>03</span>
+          <strong>Заявка в клинику</strong>
+          <p>Только после выбора пользователя и согласия.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 1b. DEMO FILM ================= -->
+<section class="tight" id="demo">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Демо</div>
+      <h2 class="display">Посмотрите, как это происходит</h2>
+      <p class="sub">Селфи → проверка кадра → стиль → AI-визуализация → сравнение до/после → заявка в клинику.</p>
+    </div>
+    <div class="demo-grid reveal">
+      <div class="demo-shell">
+        <video controls muted loop playsinline preload="metadata" data-autoplay
+          poster="assets/demo-flow-poster.webp"
+          aria-label="Демонстрационный ролик: как работает приложение ZubiLook">
+          <source src="assets/demo-flow.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="demo-side">
+        <img loading="lazy" width="928" height="1152"
+          src="assets/demo-phone-compare.webp"
+          alt="Экран телефона с интерфейсом сравнения: портрет улыбки, разделённый линией до и после">
+      </div>
+    </div>
+    <p class="media-note reveal">Видео и изображения — концепт-демонстрация интерфейса, созданы с помощью AI. Это визуализация-ориентир, а не клинический результат.</p>
+  </div>
+</section>
+
+<!-- ================= 2. PROBLEM ================= -->
+<section id="problem">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Почему это сложно</div>
+      <h2 class="display">Сложно решиться на улыбку, которую пока невозможно увидеть</h2>
+      <p class="sub">До консультации человек часто не понимает, какой результат хочет, сколько это может стоить и в какую клинику обращаться. ZubiLook делает первый шаг визуальным: показывает возможный образ улыбки и превращает интерес в понятный запрос.</p>
+    </div>
+    <div class="versus reveal">
+      <div class="col old">
+        <h3>Как сейчас</h3>
+        <ul>
+          <li><span class="m">—</span> Смотреть чужие «до/после» и гадать, подойдёт ли это вам</li>
+          <li><span class="m">—</span> Писать в клиники без понимания желаемого результата</li>
+          <li><span class="m">—</span> Бояться стоимости, боли и навязанных процедур</li>
+          <li><span class="m">—</span> Откладывать консультацию месяцами</li>
+        </ul>
+      </div>
+      <div class="col now">
+        <h3>Со ZubiLook</h3>
+        <ul>
+          <li><span class="m">✓</span> Селфи превращается в визуальный ориентир</li>
+          <li><span class="m">✓</span> Стили улыбки можно сравнить</li>
+          <li><span class="m">✓</span> Запрос в клинику становится конкретнее</li>
+          <li><span class="m">✓</span> Клиника видит интерес пациента до первого звонка</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 3. CORE LOOP ================= -->
+<section class="band tight" id="loop">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Путь пользователя</div>
+      <h2 class="display">От селфи до заявки в клинику</h2>
+    </div>
+    <div class="journey reveal">
+      <article class="journey-step">
+        <span class="num">1</span>
+        <h3>Сделайте селфи</h3>
+        <p>ZubiLook проверит свет, положение лица и видимость улыбки.<br><span class="res">Меньше неудачных фото и пустых генераций.</span></p>
+      </article>
+      <article class="journey-step">
+        <span class="num">2</span>
+        <h3>Выберите стиль</h3>
+        <p>Естественный белый, ровная улыбка, виниры или Голливудская.<br><span class="res">Выбор направления вместо «сделайте красиво».</span></p>
+      </article>
+      <article class="journey-step">
+        <span class="num">3</span>
+        <h3>Получите AI-визуализацию</h3>
+        <p>Система создаёт возможный образ улыбки.<br><span class="res">Появляется понятный визуальный ориентир.</span></p>
+      </article>
+      <article class="journey-step">
+        <span class="num">4</span>
+        <h3>Сравните до/после</h3>
+        <p>Пользователь видит разницу и эмоционально понимает результат.<br><span class="res">Интерес становится намерением.</span></p>
+      </article>
+      <article class="journey-step">
+        <span class="num">5</span>
+        <h3>Отправьте заявку</h3>
+        <p>Выбранная клиника получает контакт и визуализацию.<br><span class="res">Консультация начинается с понятного запроса.</span></p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 4. HOW IT WORKS ================= -->
+<section id="how">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Механика</div>
+      <h2 class="display">Как работает ZubiLook</h2>
+    </div>
+    <div class="ledger reveal">
+      <div class="ledger-row">
+        <h3>Проверка селфи</h3>
+        <p>Приложение подсказывает, если мало света, лицо не анфас или улыбка плохо видна.</p>
+      </div>
+      <div class="ledger-row">
+        <h3>Выбор эстетики</h3>
+        <p>Пользователь выбирает один из четырёх направлений улыбки.</p>
+      </div>
+      <div class="ledger-row">
+        <h3>AI-визуализация</h3>
+        <p>ZubiLook создаёт изображение возможного результата. Это ориентир, не медицинское заключение.</p>
+      </div>
+      <div class="ledger-row">
+        <h3>Ценовой ориентир</h3>
+        <p>Пользователь видит примерный диапазон и понимает, что точная стоимость зависит от клиники.</p>
+      </div>
+      <div class="ledger-row">
+        <h3>Заявка в клинику</h3>
+        <p>Контакт и визуализация отправляются только после действия пользователя.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 5. SMILE STYLES ================= -->
+<section class="band tight" id="styles">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Стили</div>
+      <h2 class="display">Четыре направления для первого выбора</h2>
+    </div>
+    <div class="cards c4">
+      <div class="card reveal">
+        <h3>Естественный белый</h3>
+        <p>Мягкое осветление без ощущения искусственной улыбки.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Ровная улыбка</h3>
+        <p>Акцент на симметрии и аккуратной линии зубов.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Виниры</h3>
+        <p>Более выраженная эстетика формы и тона.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Голливудская</h3>
+        <p>Максимально яркий визуальный эффект для тех, кто хочет заметную трансформацию.</p>
+      </div>
+    </div>
+    <p class="ba-note reveal" style="margin-top:20px">Доступные варианты являются визуальными стилями. Реальный план лечения определяет врач.</p>
+  </div>
+</section>
+
+<!-- ================= 6. BEFORE / AFTER ================= -->
+<section id="before-after">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">До / после</div>
+      <h2 class="display">Сравнение, которое можно почувствовать</h2>
+      <p class="sub">В приложении результат показывается слайдером «до/после» — двигайте разделитель, чтобы увидеть разницу. Ниже — интерактивная иллюстрация интерфейса.</p>
+    </div>
+    <div class="ba-demo reveal" id="ba" role="img" aria-label="Слайдер до и после: слева портрет с естественной улыбкой, справа — тот же портрет с AI-визуализацией ровных белых зубов">
+      <div class="layer before">
+        <img loading="lazy" width="2016" height="1344"
+          src="assets/demo-flow-poster.webp"
+          alt="">
+      </div>
+      <div class="layer after">
+        <img loading="lazy" width="1264" height="848"
+          src="assets/before-after-result.webp"
+          alt="">
+      </div>
+      <span class="lbl b">До</span><span class="lbl a">После</span>
+      <div class="divider"></div>
+      <div class="handle">⇄</div>
+    </div>
+    <p class="ba-note reveal">Портрет и «после» созданы AI (изменены только зубы) — демонстрация того, как выглядит визуализация в приложении. Не клинический результат: итог реального лечения может отличаться.</p>
+  </div>
+</section>
+
+<!-- ================= 6b. STORY: WHOLE FACE CHANGES ================= -->
+<section class="band tight" id="story">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">История</div>
+      <h2 class="display">Меняются не только зубы — меняется всё лицо</h2>
+      <p class="sub">Когда человек впервые видит себя с другой улыбкой, меняется выражение лица, осанка и уверенность. Именно этот момент ZubiLook делает возможным ещё до консультации.</p>
+    </div>
+    <div class="demo-shell solo reveal">
+      <video controls muted loop playsinline preload="metadata" data-autoplay
+        aria-label="Ролик: мужчина около сорока лет видит AI-визуализацию своей улыбки на телефоне, и его лицо преображается">
+        <source src="assets/story-transformation.mp4" type="video/mp4">
+      </video>
+    </div>
+    <p class="media-note reveal">Ролик создан с помощью AI. Финальный кадр — «представление себя» с новой улыбкой на основе визуализации, а не результат лечения.</p>
+  </div>
+</section>
+
+<!-- ================= 7. FOR PATIENTS ================= -->
+<section class="band audience-section" id="patients">
+  <div class="wrap split-2">
+    <div class="reveal audience-copy">
+      <div class="kicker">Пациентам</div>
+      <h2 class="display">Для тех, кто хочет понять, с чего начать</h2>
+      <p class="sub">ZubiLook помогает увидеть возможное направление, сравнить варианты и обратиться в клинику уже с понятным запросом.</p>
+      <ul class="ticks">
+        <li><span class="tick">✓</span> Не нужно сразу разбираться в терминах</li>
+        <li><span class="tick">✓</span> Можно сравнить стили до записи</li>
+        <li><span class="tick">✓</span> Заявка отправляется только после вашего согласия</li>
+        <li><span class="tick">✓</span> Точная стоимость определяется после консультации</li>
+      </ul>
+      <div class="cta-row" style="margin-top:28px">
+        <a class="btn btn-primary" href="#early-access">Получить ранний доступ</a>
+      </div>
+    </div>
+    <div class="reveal audience-media">
+      <div class="photo-card">
+        <img loading="lazy" width="2016" height="1344"
+          src="assets/patient-phone-smile.webp"
+          alt="Девушка у окна смотрит на экран телефона с мягкой улыбкой — атмосфера использования приложения">
+      </div>
+      <div class="card audience-card">
+        <h3 style="font-size:19px">Что вы получаете в beta</h3>
+        <ul class="ticks" style="margin-top:14px">
+          <li><span class="tick">→</span> Ранний доступ к приложению</li>
+          <li><span class="tick">→</span> Тестирование визуализаций</li>
+          <li><span class="tick">→</span> Уведомление о запуске</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 8. FOR CLINICS ================= -->
+<section class="audience-section" id="clinics">
+  <div class="wrap split-2">
+    <div class="reveal audience-copy">
+      <div class="kicker">Клиникам</div>
+      <h2 class="display">Лид с визуальным намерением, а не просто номер телефона</h2>
+      <p class="sub">Клиника получает заявку от человека, который уже увидел возможный результат, выбрал направление улыбки и готов обсудить консультацию.</p>
+      <ul class="ticks">
+        <li><span class="tick">✓</span> 1 лид = 1 клиника</li>
+        <li><span class="tick">✓</span> В заявке есть выбранный стиль</li>
+        <li><span class="tick">✓</span> Визуализация помогает начать разговор</li>
+        <li><span class="tick">✓</span> Оплата за лид возможна только в B2B-модели после подключения</li>
+      </ul>
+      <div class="cta-row" style="margin-top:28px">
+        <a class="btn btn-primary" href="#clinic-form">Стать клиникой-партнёром</a>
+      </div>
+    </div>
+    <div class="reveal audience-media">
+      <div class="card audience-card">
+        <h3 style="font-size:19px">Пилот для клиник</h3>
+        <ul class="ticks" style="margin-top:14px">
+          <li><span class="tick">→</span> Пилот для 2–3 клиник</li>
+          <li><span class="tick">→</span> Лиды с выбранным стилем улыбки</li>
+          <li><span class="tick">→</span> Модель оплаты за квалифицированный лид</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 9. TRUST ================= -->
+<section class="band" id="trust">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Доверие и ограничения</div>
+      <h2 class="display">Честная визуализация без медицинских обещаний</h2>
+    </div>
+    <div class="trust-ledger reveal">
+      <article class="trust-item">
+        <h3>Не диагноз</h3>
+        <p>ZubiLook не определяет заболевания и не заменяет врача.</p>
+      </article>
+      <article class="trust-item">
+        <h3>Не план лечения</h3>
+        <p>Реальный план зависит от осмотра, снимков и консультации.</p>
+      </article>
+      <article class="trust-item">
+        <h3>Только после согласия</h3>
+        <p>Фото используется для визуализации. Заявка в клинику отправляется только после действия пользователя.</p>
+      </article>
+      <article class="trust-item">
+        <h3>Без прямого доступа к AI API</h3>
+        <p>Генерация проходит через защищённый сервер — так защищены ключи, лимиты и стоимость.</p>
+      </article>
+      <article class="trust-item">
+        <h3>Контроль пользователя</h3>
+        <p>Пользователь сам выбирает стиль и клинику.</p>
+      </article>
+      <article class="trust-item">
+        <h3>Ограничения результата</h3>
+        <p>AI-изображение может отличаться от реального клинического результата.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 10. ACCESS / PILOT ================= -->
+<section class="tight" id="access">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Доступ</div>
+      <h2 class="display">Запуск через ранний доступ и клиники-партнёры</h2>
+      <p class="sub">ZubiLook готовится к beta-запуску. Пользователи могут оставить заявку на ранний доступ, а клиники — подключиться к пилоту.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 11. FAQ ================= -->
+<section class="tight" id="faq" style="padding-top:0">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Вопросы</div>
+      <h2 class="display">FAQ</h2>
+    </div>
+    <div class="reveal">
+      <details class="faq">
+        <summary>Это медицинский диагноз?</summary>
+        <p>Нет. ZubiLook создаёт AI-визуализацию возможного эстетического результата. Диагноз и план лечения определяет врач.</p>
+      </details>
+      <details class="faq">
+        <summary>Можно ли узнать точную стоимость?</summary>
+        <p>Нет, не только по селфи. ZubiLook может показать ориентир, но точная стоимость зависит от консультации, диагностики и клиники.</p>
+      </details>
+      <details class="faq">
+        <summary>Клиника сразу получит моё фото?</summary>
+        <p>Нет. Заявка отправляется только после вашего действия.</p>
+      </details>
+      <details class="faq">
+        <summary>Что если фото плохое?</summary>
+        <p>Приложение подскажет, что исправить: свет, положение лица или видимость улыбки.</p>
+      </details>
+      <details class="faq">
+        <summary>Для клиник это маркетплейс?</summary>
+        <p>Нет. Сейчас продукт сфокусирован на квалифицированных заявках для выбранной клиники.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 12. FINAL CTA + FORMS ================= -->
+<section class="band" id="early-access">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">Начать</div>
+      <h2 class="display">Начните с улыбки, которую можно увидеть</h2>
+      <p class="sub">Сделайте первый шаг до консультации: получите AI-визуализацию и решите, какой результат хотите обсудить с клиникой.</p>
+    </div>
+
+    <div class="form-grid">
+      <!-- B2C: early access -->
+      <form class="lead reveal" id="form-user" novalidate>
+        <h3 class="display">Ранний доступ</h3>
+        <p class="fh">Пришлём ссылку в день запуска. Никакого спама.</p>
+        <div class="field">
+          <label for="u-name">Имя</label>
+          <input id="u-name" name="name" type="text" autocomplete="name" maxlength="120" required>
+        </div>
+        <div class="field">
+          <label for="u-contact">Телефон или email</label>
+          <input id="u-contact" name="contact" type="text" autocomplete="email" maxlength="200" required>
+        </div>
+        <div class="field">
+          <label for="u-city">Город</label>
+          <input id="u-city" name="city" type="text" autocomplete="address-level2" maxlength="120">
+        </div>
+        <div class="field">
+          <label>Интерес</label>
+          <div class="radio-row">
+            <label><input type="radio" name="interest" value="app" checked> Я хочу попробовать приложение</label>
+            <label><input type="radio" name="interest" value="clinic"> Я представляю клинику</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="u-comment">Комментарий (необязательно)</label>
+          <textarea id="u-comment" name="comment" maxlength="1000"></textarea>
+        </div>
+        <label class="consent">
+          <input type="checkbox" name="consent" required>
+          <span>Согласен(на) на обработку данных для связи по заявке, принимаю <a href="privacy.html" target="_blank" rel="noopener">политику конфиденциальности</a> и <a href="terms.html" target="_blank" rel="noopener">пользовательское соглашение</a>.</span>
+        </label>
+        <button class="btn btn-primary" type="submit">Получить ранний доступ</button>
+        <div class="form-msg" role="status" aria-live="polite"></div>
+      </form>
+
+      <!-- B2B: clinic partnership -->
+      <form class="lead reveal" id="form-clinic" novalidate>
+        <h3 class="display" id="clinic-form">Стать клиникой-партнёром</h3>
+        <p class="fh">Пилот для 2–3 клиник: лиды с выбранным стилем улыбки, оплата за квалифицированный лид.</p>
+        <div class="field">
+          <label for="c-name">Название клиники</label>
+          <input id="c-name" name="clinic_name" type="text" maxlength="200" required>
+        </div>
+        <div class="field">
+          <label for="c-city">Город</label>
+          <input id="c-city" name="city" type="text" maxlength="120">
+        </div>
+        <div class="field">
+          <label for="c-person">Контактное лицо и роль</label>
+          <input id="c-person" name="contact_person" type="text" maxlength="160" placeholder="Имя, должность">
+        </div>
+        <div class="field">
+          <label for="c-phone">Телефон</label>
+          <input id="c-phone" name="phone" type="tel" autocomplete="tel" maxlength="40" required>
+        </div>
+        <div class="field">
+          <label for="c-email">Email</label>
+          <input id="c-email" name="email" type="email" autocomplete="email" maxlength="254">
+        </div>
+        <div class="field">
+          <label for="c-flow">Средний поток заявок сейчас (необязательно)</label>
+          <input id="c-flow" name="flow" type="text" maxlength="120" placeholder="например, 30 заявок в месяц">
+        </div>
+        <div class="field">
+          <label for="c-interest">Интерес</label>
+          <select id="c-interest" name="interest">
+            <option value="pilot">Пилот</option>
+            <option value="leads">Лиды</option>
+            <option value="partnership">Партнёрство</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="c-msg">Сообщение</label>
+          <textarea id="c-msg" name="message" maxlength="2000"></textarea>
+        </div>
+        <label class="consent">
+          <input type="checkbox" name="consent" required>
+          <span>Согласен(на) на обработку данных для связи по заявке, принимаю <a href="privacy.html" target="_blank" rel="noopener">политику конфиденциальности</a> и <a href="terms.html" target="_blank" rel="noopener">пользовательское соглашение</a>.</span>
+        </label>
+        <button class="btn btn-ghost" type="submit">Отправить заявку клиники</button>
+        <div class="form-msg" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+
+    <p class="trust-line reveal" style="margin-top:26px">AI-визуализация не заменяет стоматолога и не гарантирует клинический результат.</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap cols">
+    <div class="disc">
+      <strong style="color:var(--ink-2)">Важно:</strong> ZubiLook создаёт AI-визуализацию возможного эстетического результата по селфи.
+      Это не диагноз, не план лечения и не гарантия результата — итог зависит от консультации,
+      диагностики и плана лечения у врача.
+      <br><br>
+      Фото обрабатываются с вашего согласия и используются только для создания визуализации.
+      Заявка в клинику отправляется только после вашего действия.
+      <div class="legal-links">
+        <a href="privacy.html">Политика конфиденциальности</a>
+        <a href="terms.html">Пользовательское соглашение</a>
+      </div>
+    </div>
+    <div>
+      <div class="logo">ZubiLook<i>.</i></div>
+      <p>Продукт в стадии beta<br>© 2026</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ---------- config: form storage ----------
+  // Supabase REST endpoint for the landing forms. The URL is public; the anon
+  // This is a public client key. Service-role credentials must never be placed
+  // in this page or exposed to the browser.
+  var SUPABASE_URL = "https://htclwrotnmhtbrdisqcu.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_-1lNUyiHUtyl88kTuc_gIQ_NvTzrZ2X"; // publishable key (safe to embed)
+  var FALLBACK_EMAIL = "parkourcafe@gmail.com";
+  var CONSENT_VERSION = "landing-beta-2026-07-10";
+  var currentLang = "ru";
+  var COPY = {
+    ru: {
+      meta: {
+        title: "ZubiLook — AI-визуализация улыбки до визита в клинику",
+        description: "ZubiLook превращает селфи в AI-визуализацию возможной улыбки, помогает сравнить стили и отправить заявку в клинику для точной оценки.",
+        ogDescription: "Селфи → стиль → AI-визуализация «до/после» → заявка в клинику. Визуальный ориентир, не медицинское обещание."
+      },
+      brandHtml: "ZubiLook<i>.</i>",
+      logoLabel: "ZubiLook — на главную",
+      nav: ["Как работает", "Для пациентов", "Для клиник", "Доверие"],
+      navCta: "Получить ранний доступ",
+      hero: {
+        aria: "Главный экран",
+        eyebrow: "AI-визуализация улыбки · beta",
+        title: "Увидьте, как может выглядеть <em>ваша улыбка</em>, до визита в клинику",
+        lede: "ZubiLook превращает селфи в AI-визуализацию возможной улыбки, помогает сравнить стили и отправить заявку в клинику для точной оценки.",
+        ctas: ["Получить ранний доступ", "Посмотреть демо", "Я представляю клинику"],
+        trust: "Это AI-визуализация, а не диагноз, план лечения или гарантия результата.",
+        micro: "Фото используется для создания визуализации. Клиника получает заявку только после вашего действия.",
+        proofLabel: "Ключевые шаги ZubiLook",
+        proof: [
+          ["Проверка селфи", "Свет, анфас, видимая улыбка — до генерации."],
+          ["До / после", "Четыре эстетики улыбки в понятном сравнении."],
+          ["Заявка в клинику", "Только после выбора пользователя и согласия."]
+        ]
+      },
+      demo: {
+        kicker: "Демо",
+        title: "Посмотрите, как это происходит",
+        sub: "Селфи → проверка кадра → стиль → AI-визуализация → сравнение до/после → заявка в клинику.",
+        note: "Видео и изображения — концепт-демонстрация интерфейса, созданы с помощью AI. Это визуализация-ориентир, а не клинический результат.",
+        videoLabel: "Демонстрационный ролик: как работает приложение ZubiLook",
+        imageAlt: "Экран телефона с интерфейсом сравнения: портрет улыбки, разделённый линией до и после"
+      },
+      problem: {
+        kicker: "Почему это сложно",
+        title: "Сложно решиться на улыбку, которую пока невозможно увидеть",
+        sub: "До консультации человек часто не понимает, какой результат хочет, сколько это может стоить и в какую клинику обращаться. ZubiLook делает первый шаг визуальным: показывает возможный образ улыбки и превращает интерес в понятный запрос.",
+        oldTitle: "Как сейчас",
+        old: ["Смотреть чужие «до/после» и гадать, подойдёт ли это вам", "Писать в клиники без понимания желаемого результата", "Бояться стоимости, боли и навязанных процедур", "Откладывать консультацию месяцами"],
+        nowTitle: "С ZubiLook",
+        now: ["Селфи превращается в визуальный ориентир", "Стили улыбки можно сравнить", "Запрос в клинику становится конкретнее", "Клиника видит интерес пациента до первого звонка"]
+      },
+      journey: {
+        kicker: "Путь пользователя",
+        title: "От селфи до заявки в клинику",
+        steps: [
+          ["Сделайте селфи", "ZubiLook проверит свет, положение лица и видимость улыбки.<br><span class=\"res\">Меньше неудачных фото и пустых генераций.</span>"],
+          ["Выберите стиль", "Естественный белый, ровная улыбка, виниры или Голливудская.<br><span class=\"res\">Выбор направления вместо «сделайте красиво».</span>"],
+          ["Получите AI-визуализацию", "Система создаёт возможный образ улыбки.<br><span class=\"res\">Появляется понятный визуальный ориентир.</span>"],
+          ["Сравните до/после", "Пользователь видит разницу и эмоционально понимает результат.<br><span class=\"res\">Интерес становится намерением.</span>"],
+          ["Отправьте заявку", "Выбранная клиника получает контакт и визуализацию.<br><span class=\"res\">Консультация начинается с понятного запроса.</span>"]
+        ]
+      },
+      how: {
+        kicker: "Механика",
+        title: "Как работает ZubiLook",
+        rows: [
+          ["Проверка селфи", "Приложение подсказывает, если мало света, лицо не анфас или улыбка плохо видна."],
+          ["Выбор эстетики", "Пользователь выбирает один из четырёх направлений улыбки."],
+          ["AI-визуализация", "ZubiLook создаёт изображение возможного результата. Это ориентир, не медицинское заключение."],
+          ["Ценовой ориентир", "Пользователь видит примерный диапазон и понимает, что точная стоимость зависит от клиники."],
+          ["Заявка в клинику", "Контакт и визуализация отправляются только после действия пользователя."]
+        ]
+      },
+      styles: {
+        kicker: "Стили",
+        title: "Четыре направления для первого выбора",
+        cards: [
+          ["Естественный белый", "Мягкое осветление без ощущения искусственной улыбки."],
+          ["Ровная улыбка", "Акцент на симметрии и аккуратной линии зубов."],
+          ["Виниры", "Более выраженная эстетика формы и тона."],
+          ["Голливудская", "Максимально яркий визуальный эффект для тех, кто хочет заметную трансформацию."]
+        ],
+        note: "Доступные варианты являются визуальными стилями. Реальный план лечения определяет врач."
+      },
+      beforeAfter: {
+        kicker: "До / после",
+        title: "Сравнение, которое можно почувствовать",
+        sub: "В приложении результат показывается слайдером «до/после» — двигайте разделитель, чтобы увидеть разницу. Ниже — интерактивная иллюстрация интерфейса.",
+        aria: "Слайдер до и после: слева портрет с естественной улыбкой, справа — тот же портрет с AI-визуализацией ровных белых зубов",
+        labels: ["До", "После"],
+        note: "Портрет и «после» созданы AI (изменены только зубы) — демонстрация того, как выглядит визуализация в приложении. Не клинический результат: итог реального лечения может отличаться."
+      },
+      story: {
+        kicker: "История",
+        title: "Меняются не только зубы — меняется всё лицо",
+        sub: "Когда человек впервые видит себя с другой улыбкой, меняется выражение лица, осанка и уверенность. Именно этот момент ZubiLook делает возможным ещё до консультации.",
+        videoLabel: "Ролик: мужчина около сорока лет видит AI-визуализацию своей улыбки на телефоне, и его лицо преображается",
+        note: "Ролик создан с помощью AI. Финальный кадр — «представление себя» с новой улыбкой на основе визуализации, а не результат лечения."
+      },
+      patients: {
+        kicker: "Пациентам",
+        title: "Для тех, кто хочет понять, с чего начать",
+        sub: "ZubiLook помогает увидеть возможное направление, сравнить варианты и обратиться в клинику уже с понятным запросом.",
+        ticks: ["Не нужно сразу разбираться в терминах", "Можно сравнить стили до записи", "Заявка отправляется только после вашего согласия", "Точная стоимость определяется после консультации"],
+        cta: "Получить ранний доступ",
+        imageAlt: "Девушка у окна смотрит на экран телефона с мягкой улыбкой — атмосфера использования приложения",
+        cardTitle: "Что вы получаете в beta",
+        cardTicks: ["Ранний доступ к приложению", "Тестирование визуализаций", "Уведомление о запуске"]
+      },
+      clinics: {
+        kicker: "Клиникам",
+        title: "Лид с визуальным намерением, а не просто номер телефона",
+        sub: "Клиника получает заявку от человека, который уже увидел возможный результат, выбрал направление улыбки и готов обсудить консультацию.",
+        ticks: ["1 лид = 1 клиника", "В заявке есть выбранный стиль", "Визуализация помогает начать разговор", "Оплата за лид возможна только в B2B-модели после подключения"],
+        cta: "Стать клиникой-партнёром",
+        cardTitle: "Пилот для клиник",
+        cardTicks: ["Пилот для 2–3 клиник", "Лиды с выбранным стилем улыбки", "Модель оплаты за квалифицированный лид"]
+      },
+      trust: {
+        kicker: "Доверие и ограничения",
+        title: "Честная визуализация без медицинских обещаний",
+        items: [
+          ["Не диагноз", "ZubiLook не определяет заболевания и не заменяет врача."],
+          ["Не план лечения", "Реальный план зависит от осмотра, снимков и консультации."],
+          ["Только после согласия", "Фото используется для визуализации. Заявка в клинику отправляется только после действия пользователя."],
+          ["Без прямого доступа к AI API", "Генерация проходит через защищённый сервер — так защищены ключи, лимиты и стоимость."],
+          ["Контроль пользователя", "Пользователь сам выбирает стиль и клинику."],
+          ["Ограничения результата", "AI-изображение может отличаться от реального клинического результата."]
+        ]
+      },
+      access: { kicker: "Доступ", title: "Запуск через ранний доступ и клиники-партнёры", sub: "ZubiLook готовится к beta-запуску. Пользователи могут оставить заявку на ранний доступ, а клиники — подключиться к пилоту." },
+      faq: {
+        kicker: "Вопросы",
+        title: "FAQ",
+        items: [
+          ["Это медицинский диагноз?", "Нет. ZubiLook создаёт AI-визуализацию возможного эстетического результата. Диагноз и план лечения определяет врач."],
+          ["Можно ли узнать точную стоимость?", "Нет, не только по селфи. ZubiLook может показать ориентир, но точная стоимость зависит от консультации, диагностики и клиники."],
+          ["Клиника сразу получит моё фото?", "Нет. Заявка отправляется только после вашего действия."],
+          ["Что если фото плохое?", "Приложение подскажет, что исправить: свет, положение лица или видимость улыбки."],
+          ["Для клиник это маркетплейс?", "Нет. Сейчас продукт сфокусирован на квалифицированных заявках для выбранной клиники."]
+        ]
+      },
+      final: {
+        kicker: "Начать",
+        title: "Начните с улыбки, которую можно увидеть",
+        sub: "Сделайте первый шаг до консультации: получите AI-визуализацию и решите, какой результат хотите обсудить с клиникой.",
+        note: "AI-визуализация не заменяет стоматолога и не гарантирует клинический результат."
+      },
+      forms: {
+        userTitle: "Ранний доступ",
+        userHelp: "Пришлём ссылку в день запуска. Никакого спама.",
+        labels: ["Имя", "Телефон или email", "Город", "Интерес", "Комментарий (необязательно)"],
+        radios: ["Я хочу попробовать приложение", "Я представляю клинику"],
+        consent: "Согласен(на) на обработку данных для связи по заявке, принимаю <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">политику конфиденциальности</a> и <a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">пользовательское соглашение</a>.",
+        userButton: "Получить ранний доступ",
+        clinicTitle: "Стать клиникой-партнёром",
+        clinicHelp: "Пилот для 2–3 клиник: лиды с выбранным стилем улыбки, оплата за квалифицированный лид.",
+        clinicLabels: ["Название клиники", "Город", "Контактное лицо и роль", "Телефон", "Email", "Средний поток заявок сейчас (необязательно)", "Интерес", "Сообщение"],
+        clinicPlaceholders: ["Имя, должность", "например, 30 заявок в месяц"],
+        options: ["Пилот", "Лиды", "Партнёрство"],
+        clinicButton: "Отправить заявку клиники"
+      },
+      messages: {
+        userOk: "Готово! Вы в списке раннего доступа.",
+        duplicate: "Вы уже в списке — мы напишем в день запуска.",
+        fail: "Не получилось отправить. Попробуйте ещё раз или напишите нам: ",
+        offline: "Нет связи с сервером. Открываем письмо…",
+        opening: "Открываем письмо с вашей заявкой…",
+        clinicOk: "Заявка отправлена. Свяжемся с вами по пилоту.",
+        clinicFail: "Не получилось отправить. Напишите нам: ",
+        subjectUser: "ZubiLook — ранний доступ",
+        subjectClinic: "ZubiLook — заявка клиники"
+      },
+      footer: {
+        html: "<strong style=\"color:var(--ink-2)\">Важно:</strong> ZubiLook создаёт AI-визуализацию возможного эстетического результата по селфи. Это не диагноз, не план лечения и не гарантия результата — итог зависит от консультации, диагностики и плана лечения у врача.<br><br>Фото обрабатываются с вашего согласия и используются только для создания визуализации. Заявка в клинику отправляется только после вашего действия.<div class=\"legal-links\"><a href=\"privacy.html\">Политика конфиденциальности</a><a href=\"terms.html\">Пользовательское соглашение</a></div>",
+        status: "Продукт в стадии beta<br>© 2026"
+      }
+    },
+    en: {
+      meta: {
+        title: "ZubiLook — AI smile preview before a clinic visit",
+        description: "Upload a selfie, choose a smile style, compare an AI before/after preview, and send a clear request to a clinic.",
+        ogDescription: "Selfie → smile style → AI before/after preview → clinic request. A visual reference, not a medical promise."
+      },
+      brandHtml: "ZubiLook<i>.</i>",
+      logoLabel: "ZubiLook — home",
+      nav: ["How it works", "For patients", "For clinics", "Trust"],
+      navCta: "Get early access",
+      hero: {
+        aria: "Hero section",
+        eyebrow: "AI smile preview · beta",
+        title: "See what <em>your smile</em> could look like before visiting a clinic",
+        lede: "ZubiLook turns a selfie into an AI preview of a possible smile, helps you compare styles, and lets you send a clearer request to a clinic.",
+        ctas: ["Get early access", "Watch demo", "I represent a clinic"],
+        trust: "This is an AI visualization, not a diagnosis, treatment plan, or guaranteed result.",
+        micro: "Your photo is used to create the preview. A clinic receives a request only after your action.",
+        proofLabel: "Key ZubiLook steps",
+        proof: [
+          ["Selfie check", "Light, front-facing pose, visible smile before generation."],
+          ["Before / after", "Four smile aesthetics in a clear comparison."],
+          ["Clinic request", "Only after the user chooses and consents."]
+        ]
+      },
+      demo: {
+        kicker: "Demo",
+        title: "See how it works",
+        sub: "Selfie → photo check → style → AI preview → before/after comparison → clinic request.",
+        note: "Videos and images are AI-created interface concepts. They are visual references, not clinical results.",
+        videoLabel: "Demo video: how the ZubiLook app works",
+        imageAlt: "Phone screen with a smile comparison interface and a before/after divider"
+      },
+      problem: {
+        kicker: "Why it is hard",
+        title: "It is hard to commit to a smile you cannot see yet",
+        sub: "Before a consultation, people often do not know what result they want, what it may cost, or which clinic to contact. ZubiLook makes the first step visual: it shows a possible smile direction and turns interest into a clearer request.",
+        oldTitle: "Today",
+        old: ["Looking at someone else's before/after photos and guessing if it fits you", "Messaging clinics without a clear desired result", "Worrying about price, pain, and being pushed into procedures", "Putting off the consultation for months"],
+        nowTitle: "With ZubiLook",
+        now: ["A selfie becomes a visual reference", "Smile styles can be compared", "The clinic request becomes more specific", "The clinic sees patient intent before the first call"]
+      },
+      journey: {
+        kicker: "User journey",
+        title: "From selfie to clinic request",
+        steps: [
+          ["Take a selfie", "ZubiLook checks light, face position, and smile visibility.<br><span class=\"res\">Fewer failed photos and empty generations.</span>"],
+          ["Choose a style", "Natural white, straight smile, veneers, or Hollywood.<br><span class=\"res\">A direction instead of “make it beautiful”.</span>"],
+          ["Get an AI preview", "The system creates a possible smile image.<br><span class=\"res\">A clear visual reference appears.</span>"],
+          ["Compare before/after", "The user sees the difference and understands the result emotionally.<br><span class=\"res\">Interest turns into intent.</span>"],
+          ["Send a request", "The selected clinic receives contact details and the preview.<br><span class=\"res\">The consultation starts with a clear request.</span>"]
+        ]
+      },
+      how: {
+        kicker: "Mechanics",
+        title: "How ZubiLook works",
+        rows: [
+          ["Selfie check", "The app flags poor light, non-front-facing photos, or a smile that is not visible enough."],
+          ["Aesthetic choice", "The user chooses one of four smile directions."],
+          ["AI preview", "ZubiLook creates an image of a possible result. It is a reference, not a medical conclusion."],
+          ["Price reference", "The user sees an approximate range and understands that the exact price depends on the clinic."],
+          ["Clinic request", "Contact details and the preview are sent only after the user's action."]
+        ]
+      },
+      styles: {
+        kicker: "Styles",
+        title: "Four directions for the first choice",
+        cards: [
+          ["Natural white", "Soft whitening without an artificial-smile feel."],
+          ["Straight smile", "Focus on symmetry and a clean tooth line."],
+          ["Veneer effect", "A more pronounced aesthetic of shape and tone."],
+          ["Hollywood", "A bright visual effect for people who want a noticeable transformation."]
+        ],
+        note: "These options are visual styles. The real treatment plan is defined by a doctor."
+      },
+      beforeAfter: {
+        kicker: "Before / after",
+        title: "A comparison you can feel",
+        sub: "In the app, the result is shown with a before/after slider. Move the divider to see the difference. Below is an interactive interface illustration.",
+        aria: "Before and after slider: left side shows a natural smile, right side shows the same portrait with an AI preview of straighter whiter teeth",
+        labels: ["Before", "After"],
+        note: "The portrait and after image are AI-created, with teeth changed only, to demonstrate the app preview. Not a clinical result: real treatment can differ."
+      },
+      story: {
+        kicker: "Story",
+        title: "Not only teeth change — the whole face changes",
+        sub: "When a person sees themselves with a different smile for the first time, expression, posture, and confidence can change. ZubiLook makes that moment possible before a consultation.",
+        videoLabel: "Video: a man around forty sees an AI smile preview on a phone and his face changes",
+        note: "The video was created with AI. The final frame is an imagined new-smile moment based on a preview, not a treatment result."
+      },
+      patients: {
+        kicker: "For patients",
+        title: "For people who want to know where to start",
+        sub: "ZubiLook helps you see a possible direction, compare options, and contact a clinic with a clearer request.",
+        ticks: ["No need to understand dental terms immediately", "Compare styles before booking", "A request is sent only after your consent", "The exact price is defined after consultation"],
+        cta: "Get early access",
+        imageAlt: "A woman by a window looking at her phone with a soft smile",
+        cardTitle: "What you get in beta",
+        cardTicks: ["Early app access", "Visualization testing", "Launch notification"]
+      },
+      clinics: {
+        kicker: "For clinics",
+        title: "A lead with visual intent, not just a phone number",
+        sub: "A clinic receives a request from a person who has already seen a possible result, chosen a smile direction, and is ready to discuss a consultation.",
+        ticks: ["1 lead = 1 clinic", "The request includes the selected style", "The visualization helps start the conversation", "Lead payment is possible only in the B2B model after onboarding"],
+        cta: "Become a partner clinic",
+        cardTitle: "Clinic pilot",
+        cardTicks: ["Pilot for 2–3 clinics", "Leads with selected smile style", "Qualified-lead payment model"]
+      },
+      trust: {
+        kicker: "Trust and limits",
+        title: "Honest visualization without medical promises",
+        items: [
+          ["Not a diagnosis", "ZubiLook does not detect diseases and does not replace a doctor."],
+          ["Not a treatment plan", "The real plan depends on examination, imaging, and consultation."],
+          ["Only after consent", "The photo is used for visualization. A clinic request is sent only after the user's action."],
+          ["No direct AI API access", "Generation runs through a protected server to safeguard keys, limits, and cost."],
+          ["User control", "The user chooses the style and clinic."],
+          ["Result limitations", "The AI image can differ from the real clinical result."]
+        ]
+      },
+      access: { kicker: "Access", title: "Launch through early access and partner clinics", sub: "ZubiLook is preparing for beta launch. Users can join early access, and clinics can join the pilot." },
+      faq: {
+        kicker: "Questions",
+        title: "FAQ",
+        items: [
+          ["Is this a medical diagnosis?", "No. ZubiLook creates an AI visualization of a possible aesthetic result. Diagnosis and treatment planning are done by a doctor."],
+          ["Can I know the exact price?", "No, not from a selfie alone. ZubiLook can show a reference range, but the exact price depends on consultation, diagnostics, and the clinic."],
+          ["Will a clinic receive my photo immediately?", "No. A request is sent only after your action."],
+          ["What if the photo is bad?", "The app will tell you what to fix: light, face position, or smile visibility."],
+          ["Is this a marketplace for clinics?", "No. The product is focused on qualified requests for the selected clinic."]
+        ]
+      },
+      final: {
+        kicker: "Start",
+        title: "Start with a smile you can see",
+        sub: "Take the first step before consultation: get an AI preview and decide what result you want to discuss with a clinic.",
+        note: "AI visualization does not replace a dentist and does not guarantee a clinical result."
+      },
+      forms: {
+        userTitle: "Early access",
+        userHelp: "We will send the link on launch day. No spam.",
+        labels: ["Name", "Phone or email", "City", "Interest", "Comment (optional)"],
+        radios: ["I want to try the app", "I represent a clinic"],
+        consent: "I agree to data processing for follow-up about my request and accept the <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">Privacy Policy</a> and <a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">Terms of Use</a>.",
+        userButton: "Get early access",
+        clinicTitle: "Become a partner clinic",
+        clinicHelp: "Pilot for 2–3 clinics: leads with selected smile style and payment per qualified lead.",
+        clinicLabels: ["Clinic name", "City", "Contact person and role", "Phone", "Email", "Current average request flow (optional)", "Interest", "Message"],
+        clinicPlaceholders: ["Name, role", "for example, 30 requests per month"],
+        options: ["Pilot", "Leads", "Partnership"],
+        clinicButton: "Send clinic request"
+      },
+      messages: {
+        userOk: "Done. You are on the early-access list.",
+        duplicate: "You are already on the list — we will write on launch day.",
+        fail: "Could not send. Try again or email us: ",
+        offline: "No connection to the server. Opening email…",
+        opening: "Opening an email with your request…",
+        clinicOk: "Request sent. We will contact you about the pilot.",
+        clinicFail: "Could not send. Email us: ",
+        subjectUser: "ZubiLook — early access",
+        subjectClinic: "ZubiLook — clinic request"
+      },
+      footer: {
+        html: "<strong style=\"color:var(--ink-2)\">Important:</strong> ZubiLook creates an AI visualization of a possible aesthetic result from a selfie. It is not a diagnosis, treatment plan, or result guarantee. The final outcome depends on consultation, diagnostics, and a doctor's treatment plan.<br><br>Photos are processed with your consent and used only to create the visualization. A clinic request is sent only after your action.<div class=\"legal-links\"><a href=\"privacy.html\">Privacy Policy</a><a href=\"terms.html\">Terms of Use</a></div>",
+        status: "Product in beta<br>© 2026"
+      }
+    },
+    uz: {
+      meta: {
+        title: "ZubiLook — klinikaga borishdan oldin AI tabassum vizualizatsiyasi",
+        description: "Selfi yuklang, tabassum uslubini tanlang, AI «oldin/keyin» vizualizatsiyasini solishtiring va klinikaga aniqroq so‘rov yuboring.",
+        ogDescription: "Selfi → uslub → AI «oldin/keyin» vizualizatsiyasi → klinika so‘rovi. Bu tibbiy va’da emas, vizual yo‘nalish."
+      },
+      brandHtml: "ZubiLook<i>.</i>",
+      logoLabel: "ZubiLook — bosh sahifa",
+      nav: ["Qanday ishlaydi", "Bemorlar uchun", "Klinikalar uchun", "Ishonch"],
+      navCta: "Erta kirish",
+      hero: {
+        aria: "Bosh ekran",
+        eyebrow: "AI tabassum vizualizatsiyasi · beta",
+        title: "Klinikaga borishdan oldin <em>tabassumingiz</em> qanday ko‘rinishi mumkinligini ko‘ring",
+        lede: "ZubiLook selfini ehtimoliy tabassumning AI-vizualizatsiyasiga aylantiradi, uslublarni solishtirishga va klinikaga aniqroq so‘rov yuborishga yordam beradi.",
+        ctas: ["Erta kirish", "Demoni ko‘rish", "Men klinika vakiliman"],
+        trust: "Bu AI-vizualizatsiya, tashxis, davolash rejasi yoki natija kafolati emas.",
+        micro: "Foto vizualizatsiya yaratish uchun ishlatiladi. Klinika so‘rovni faqat sizning harakatingizdan keyin oladi.",
+        proofLabel: "ZubiLook asosiy qadamlari",
+        proof: [
+          ["Selfini tekshirish", "Yorug‘lik, yuzning to‘g‘ri holati va ko‘rinadigan tabassum — generatsiyadan oldin."],
+          ["Oldin / keyin", "To‘rt tabassum estetikasi aniq solishtirishda."],
+          ["Klinika so‘rovi", "Faqat foydalanuvchi tanlovi va roziligidan keyin."]
+        ]
+      },
+      demo: {
+        kicker: "Demo",
+        title: "Jarayon qanday ketishini ko‘ring",
+        sub: "Selfi → kadr tekshiruvi → uslub → AI-vizualizatsiya → oldin/keyin solishtirish → klinika so‘rovi.",
+        note: "Video va tasvirlar AI yordamida yaratilgan interfeys konseptlari. Bu klinik natija emas, vizual yo‘nalish.",
+        videoLabel: "Demo video: ZubiLook ilovasi qanday ishlaydi",
+        imageAlt: "Telefonda tabassum solishtirish interfeysi va oldin/keyin ajratuvchi chiziq"
+      },
+      problem: {
+        kicker: "Nega bu qiyin",
+        title: "Hali ko‘rmagan tabassumga qaror qilish qiyin",
+        sub: "Konsultatsiyadan oldin odam ko‘pincha qanday natija xohlashini, qancha turishini va qaysi klinikaga murojaat qilishni bilmaydi. ZubiLook birinchi qadamni vizual qiladi: ehtimoliy tabassum yo‘nalishini ko‘rsatadi va qiziqishni aniq so‘rovga aylantiradi.",
+        oldTitle: "Hozir qanday",
+        old: ["Boshqalarning «oldin/keyin» rasmlariga qarab, o‘zingizga mos kelishini taxmin qilish", "Klinikalarga istalgan natijani aniq bilmasdan yozish", "Narx, og‘riq va ortiqcha muolajalardan xavotirlanish", "Konsultatsiyani oylar davomida kechiktirish"],
+        nowTitle: "ZubiLook bilan",
+        now: ["Selfi vizual yo‘nalishga aylanadi", "Tabassum uslublarini solishtirish mumkin", "Klinikaga so‘rov aniqroq bo‘ladi", "Klinika birinchi qo‘ng‘iroqdan oldin bemor qiziqishini ko‘radi"]
+      },
+      journey: {
+        kicker: "Foydalanuvchi yo‘li",
+        title: "Selfidan klinika so‘rovigacha",
+        steps: [
+          ["Selfi oling", "ZubiLook yorug‘lik, yuz holati va tabassum ko‘rinishini tekshiradi.<br><span class=\"res\">Muvaffaqiyatsiz fotosuratlar va bo‘sh generatsiyalar kamroq bo‘ladi.</span>"],
+          ["Uslubni tanlang", "Tabiiy oq, tekis tabassum, vinirlar yoki Hollywood.<br><span class=\"res\">«Chiroyli qilib bering» o‘rniga aniq yo‘nalish.</span>"],
+          ["AI-vizualizatsiya oling", "Tizim ehtimoliy tabassum tasvirini yaratadi.<br><span class=\"res\">Aniq vizual yo‘nalish paydo bo‘ladi.</span>"],
+          ["Oldin/keyinni solishtiring", "Foydalanuvchi farqni ko‘radi va natijani hissiy tushunadi.<br><span class=\"res\">Qiziqish niyatga aylanadi.</span>"],
+          ["So‘rov yuboring", "Tanlangan klinika kontakt va vizualizatsiyani oladi.<br><span class=\"res\">Konsultatsiya aniq so‘rov bilan boshlanadi.</span>"]
+        ]
+      },
+      how: {
+        kicker: "Mexanika",
+        title: "ZubiLook qanday ishlaydi",
+        rows: [
+          ["Selfini tekshirish", "Ilova yorug‘lik kam bo‘lsa, yuz to‘g‘ri emas yoki tabassum yaxshi ko‘rinmasa, aytadi."],
+          ["Estetikani tanlash", "Foydalanuvchi tabassumning to‘rt yo‘nalishidan birini tanlaydi."],
+          ["AI-vizualizatsiya", "ZubiLook ehtimoliy natija tasvirini yaratadi. Bu yo‘nalish, tibbiy xulosa emas."],
+          ["Narx yo‘nalishi", "Foydalanuvchi taxminiy diapazonni ko‘radi va aniq narx klinikaga bog‘liqligini tushunadi."],
+          ["Klinika so‘rovi", "Kontakt va vizualizatsiya faqat foydalanuvchi harakatidan keyin yuboriladi."]
+        ]
+      },
+      styles: {
+        kicker: "Uslublar",
+        title: "Birinchi tanlov uchun to‘rt yo‘nalish",
+        cards: [
+          ["Tabiiy oq", "Sun’iy ko‘rinishsiz yumshoq oqartirish."],
+          ["Tekis tabassum", "Simmetriya va tish chizig‘ining tartibiga e’tibor."],
+          ["Vinir effekti", "Shakl va rang bo‘yicha yanada aniqroq estetika."],
+          ["Hollywood", "Sezilarli o‘zgarish xohlaganlar uchun yorqin vizual effekt."]
+        ],
+        note: "Bu variantlar vizual uslublar. Haqiqiy davolash rejasini shifokor belgilaydi."
+      },
+      beforeAfter: {
+        kicker: "Oldin / keyin",
+        title: "His qilinadigan solishtirish",
+        sub: "Ilovada natija «oldin/keyin» slayderi bilan ko‘rsatiladi — farqni ko‘rish uchun ajratgichni suring. Quyida interfeysning interaktiv namunasi.",
+        aria: "Oldin va keyin slayderi: chapda tabiiy tabassum, o‘ngda esa AI-vizualizatsiya qilingan tekisroq va oqroq tishlar",
+        labels: ["Oldin", "Keyin"],
+        note: "Portret va «keyin» tasviri AI yordamida yaratilgan, faqat tishlar o‘zgartirilgan — bu ilovadagi vizualizatsiya namoyishi. Klinik natija emas: haqiqiy davolash farq qilishi mumkin."
+      },
+      story: {
+        kicker: "Hikoya",
+        title: "Faqat tishlar emas — butun yuz o‘zgaradi",
+        sub: "Odam o‘zini boshqa tabassum bilan birinchi marta ko‘rganda, yuz ifodasi, gavda tutishi va ishonch ham o‘zgarishi mumkin. ZubiLook bu lahzani konsultatsiyadan oldin yaratadi.",
+        videoLabel: "Video: qirq yoshlar atrofidagi erkak telefonda AI tabassum vizualizatsiyasini ko‘radi va yuz ifodasi o‘zgaradi",
+        note: "Video AI yordamida yaratilgan. Yakuniy kadr — yangi tabassumni tasavvur qilish, davolash natijasi emas."
+      },
+      patients: {
+        kicker: "Bemorlar uchun",
+        title: "Nimadan boshlashni bilmoqchi bo‘lganlar uchun",
+        sub: "ZubiLook ehtimoliy yo‘nalishni ko‘rish, variantlarni solishtirish va klinikaga aniqroq so‘rov bilan murojaat qilishga yordam beradi.",
+        ticks: ["Darhol stomatologik terminlarni bilish shart emas", "Yozilishdan oldin uslublarni solishtirish mumkin", "So‘rov faqat sizning roziligingizdan keyin yuboriladi", "Aniq narx konsultatsiyadan keyin belgilanadi"],
+        cta: "Erta kirish",
+        imageAlt: "Deraza yonida telefonga qarab yumshoq tabassum qilayotgan qiz",
+        cardTitle: "Beta versiyada nimalar olasiz",
+        cardTicks: ["Ilovaga erta kirish", "Vizualizatsiyalarni sinash", "Ishga tushirish haqida xabar"]
+      },
+      clinics: {
+        kicker: "Klinikalar uchun",
+        title: "Faqat telefon raqami emas, vizual niyatga ega murojaat",
+        sub: "Klinika ehtimoliy natijani ko‘rgan, tabassum yo‘nalishini tanlagan va konsultatsiyani muhokama qilishga tayyor odamdan so‘rov oladi.",
+        ticks: ["1 murojaat = 1 klinika", "So‘rovda tanlangan uslub bor", "Vizualizatsiya suhbatni boshlashga yordam beradi", "Murojaat uchun to‘lov faqat ulanishdan keyingi B2B modelida mumkin"],
+        cta: "Hamkor klinika bo‘lish",
+        cardTitle: "Klinikalar uchun pilot",
+        cardTicks: ["2–3 klinika uchun pilot", "Tanlangan tabassum uslubi bilan murojaatlar", "Malakali murojaat uchun to‘lov modeli"]
+      },
+      trust: {
+        kicker: "Ishonch va cheklovlar",
+        title: "Tibbiy va’dalarsiz halol vizualizatsiya",
+        items: [
+          ["Tashxis emas", "ZubiLook kasalliklarni aniqlamaydi va shifokor o‘rnini bosmaydi."],
+          ["Davolash rejasi emas", "Haqiqiy reja ko‘rik, suratlar va konsultatsiyaga bog‘liq."],
+          ["Faqat rozilikdan keyin", "Foto vizualizatsiya uchun ishlatiladi. Klinika so‘rovi faqat foydalanuvchi harakatidan keyin yuboriladi."],
+          ["AI APIga bevosita kirish yo‘q", "Generatsiya kalitlar, limitlar va xarajatni himoya qiladigan server orqali ishlaydi."],
+          ["Foydalanuvchi nazorati", "Foydalanuvchi uslub va klinikani o‘zi tanlaydi."],
+          ["Natija cheklovlari", "AI tasviri haqiqiy klinik natijadan farq qilishi mumkin."]
+        ]
+      },
+      access: { kicker: "Kirish", title: "Erta kirish va hamkor klinikalar orqali ishga tushirish", sub: "ZubiLook beta-ishga tushirishga tayyorlanmoqda. Foydalanuvchilar erta kirishga yozilishi, klinikalar esa pilotga qo‘shilishi mumkin." },
+      faq: {
+        kicker: "Savollar",
+        title: "FAQ",
+        items: [
+          ["Bu tibbiy tashxismi?", "Yo‘q. ZubiLook ehtimoliy estetik natijaning AI-vizualizatsiyasini yaratadi. Tashxis va davolash rejasini shifokor belgilaydi."],
+          ["Aniq narxni bilish mumkinmi?", "Yo‘q, faqat selfi orqali emas. ZubiLook yo‘nalish narxini ko‘rsatishi mumkin, ammo aniq narx konsultatsiya, diagnostika va klinikaga bog‘liq."],
+          ["Klinika mening fotomni darhol oladimi?", "Yo‘q. So‘rov faqat sizning harakatingizdan keyin yuboriladi."],
+          ["Foto yomon bo‘lsa-chi?", "Ilova nimani tuzatish kerakligini aytadi: yorug‘lik, yuz holati yoki tabassum ko‘rinishi."],
+          ["Bu klinikalar uchun marketplace-mi?", "Yo‘q. Hozir mahsulot tanlangan klinika uchun malakali so‘rovlarga fokuslangan."]
+        ]
+      },
+      final: {
+        kicker: "Boshlash",
+        title: "Ko‘rish mumkin bo‘lgan tabassumdan boshlang",
+        sub: "Konsultatsiyadan oldin birinchi qadamni qo‘ying: AI-vizualizatsiya oling va klinika bilan qaysi natijani muhokama qilmoqchi ekaningizni tanlang.",
+        note: "AI-vizualizatsiya stomatolog o‘rnini bosmaydi va klinik natijani kafolatlamaydi."
+      },
+      forms: {
+        userTitle: "Erta kirish",
+        userHelp: "Ishga tushirish kuni havola yuboramiz. Spam bo‘lmaydi.",
+        labels: ["Ism", "Telefon yoki email", "Shahar", "Qiziqish", "Izoh (ixtiyoriy)"],
+        radios: ["Ilovani sinab ko‘rmoqchiman", "Men klinika vakiliman"],
+        consent: "So‘rov bo‘yicha bog‘lanish uchun ma’lumotlarimni qayta ishlashga roziman hamda <a href=\"privacy.html\" target=\"_blank\" rel=\"noopener\">Maxfiylik siyosati</a> va <a href=\"terms.html\" target=\"_blank\" rel=\"noopener\">Foydalanish shartlari</a>ni qabul qilaman.",
+        userButton: "Erta kirish",
+        clinicTitle: "Hamkor klinika bo‘lish",
+        clinicHelp: "2–3 klinika uchun pilot: tanlangan tabassum uslubi bilan murojaatlar, malakali murojaat uchun to‘lov.",
+        clinicLabels: ["Klinika nomi", "Shahar", "Kontakt shaxs va lavozim", "Telefon", "Email", "Hozirgi o‘rtacha so‘rov oqimi (ixtiyoriy)", "Qiziqish", "Xabar"],
+        clinicPlaceholders: ["Ism, lavozim", "masalan, oyiga 30 ta so‘rov"],
+        options: ["Pilot", "Murojaatlar", "Hamkorlik"],
+        clinicButton: "Klinika so‘rovini yuborish"
+      },
+      messages: {
+        userOk: "Tayyor. Siz erta kirish ro‘yxatidasiz.",
+        duplicate: "Siz ro‘yxatda borsiz — ishga tushirish kuni yozamiz.",
+        fail: "Yuborib bo‘lmadi. Yana urinib ko‘ring yoki bizga yozing: ",
+        offline: "Server bilan aloqa yo‘q. Email ochilmoqda…",
+        opening: "So‘rovingiz bilan email ochilmoqda…",
+        clinicOk: "So‘rov yuborildi. Pilot bo‘yicha siz bilan bog‘lanamiz.",
+        clinicFail: "Yuborib bo‘lmadi. Bizga yozing: ",
+        subjectUser: "ZubiLook — erta kirish",
+        subjectClinic: "ZubiLook — klinika so‘rovi"
+      },
+      footer: {
+        html: "<strong style=\"color:var(--ink-2)\">Muhim:</strong> ZubiLook selfi asosida ehtimoliy estetik natijaning AI-vizualizatsiyasini yaratadi. Bu tashxis, davolash rejasi yoki natija kafolati emas — yakuniy natija konsultatsiya, diagnostika va shifokor davolash rejasiga bog‘liq.<br><br>Fotolar sizning roziligingiz bilan qayta ishlanadi va faqat vizualizatsiya yaratish uchun ishlatiladi. Klinika so‘rovi faqat sizning harakatingizdan keyin yuboriladi.<div class=\"legal-links\"><a href=\"privacy.html\">Maxfiylik siyosati</a><a href=\"terms.html\">Foydalanish shartlari</a></div>",
+        status: "Mahsulot beta bosqichida<br>© 2026"
+      }
+    }
+  };
+
+  function copy() { return COPY[currentLang] || COPY.ru; }
+  function q(sel, root) { return (root || document).querySelector(sel); }
+  function qa(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  function setText(sel, value, root) { var el = typeof sel === "string" ? q(sel, root) : sel; if (el && value != null) el.textContent = value; }
+  function setHTML(sel, value, root) { var el = typeof sel === "string" ? q(sel, root) : sel; if (el && value != null) el.innerHTML = value; }
+  function setAttr(sel, attr, value, root) { var el = typeof sel === "string" ? q(sel, root) : sel; if (el && value != null) el.setAttribute(attr, value); }
+  function setMarkedList(selector, values) {
+    qa(selector).forEach(function (el, i) {
+      if (!values[i]) return;
+      var marker = el.querySelector(".m, .tick");
+      el.innerHTML = (marker ? marker.outerHTML + " " : "") + values[i];
+    });
+  }
+  function setSimpleCards(selector, values) {
+    qa(selector).forEach(function (card, i) {
+      if (!values[i]) return;
+      setText("h3", values[i][0], card);
+      setText("p", values[i][1], card);
+    });
+  }
+  function setLabel(label, text) {
+    if (!label) return;
+    var input = label.querySelector("input");
+    label.innerHTML = "";
+    if (input) label.appendChild(input);
+    label.appendChild(document.createTextNode(" " + text));
+  }
+  function setSectionHead(root, data) {
+    setText(".kicker", data.kicker, root);
+    setText("h2", data.title, root);
+    if (data.sub) setText(".sub", data.sub, root);
+  }
+  function applyLanguage(lang) {
+    currentLang = COPY[lang] ? lang : "ru";
+    var t = copy();
+    document.documentElement.lang = currentLang;
+    document.title = t.meta.title;
+    setAttr('meta[name="description"]', "content", t.meta.description);
+    setAttr('meta[property="og:title"]', "content", t.meta.title);
+    setAttr('meta[property="og:description"]', "content", t.meta.ogDescription);
+    setAttr('meta[name="twitter:card"]', "content", "summary_large_image");
+    qa(".logo").forEach(function (el) { el.innerHTML = t.brandHtml; });
+    setAttr("header .logo", "aria-label", t.logoLabel);
+    setAttr("nav.top", "aria-label", currentLang === "ru" ? "Основная навигация" : currentLang === "uz" ? "Asosiy navigatsiya" : "Main navigation");
+    qa("nav.top a:not(.btn)").forEach(function (el, i) { if (t.nav[i]) el.textContent = t.nav[i]; });
+    qa("#mnav > a:not(.btn)").forEach(function (el, i) { if (t.nav[i]) el.textContent = t.nav[i]; });
+    setText("nav.top .btn", t.navCta);
+    setText("#mnav .btn", t.navCta);
+    qa("[data-lang]").forEach(function (btn) { btn.classList.toggle("active", btn.dataset.lang === currentLang); });
+
+    var hero = q(".hero");
+    setAttr(hero, "aria-label", t.hero.aria);
+    setText(".hero .eyebrow", t.hero.eyebrow);
+    setHTML(".hero h1", t.hero.title);
+    setText(".hero .lede", t.hero.lede);
+    qa(".hero .cta-row a").forEach(function (el, i) { if (t.hero.ctas[i]) el.textContent = t.hero.ctas[i]; });
+    setText(".hero .trust-line", t.hero.trust);
+    setText(".hero .micro", t.hero.micro);
+    setAttr(".hero-proof", "aria-label", t.hero.proofLabel);
+    qa(".hero-proof div").forEach(function (el, i) {
+      if (!t.hero.proof[i]) return;
+      setText("strong", t.hero.proof[i][0], el);
+      setText("p", t.hero.proof[i][1], el);
+    });
+
+    var demo = q("#demo");
+    setSectionHead(demo, t.demo);
+    setText("#demo .media-note", t.demo.note);
+    setAttr("#demo video", "aria-label", t.demo.videoLabel);
+    setAttr("#demo img", "alt", t.demo.imageAlt);
+
+    var problem = q("#problem");
+    setSectionHead(problem, t.problem);
+    setText(".versus .old h3", t.problem.oldTitle, problem);
+    setText(".versus .now h3", t.problem.nowTitle, problem);
+    setMarkedList("#problem .versus .old li", t.problem.old);
+    setMarkedList("#problem .versus .now li", t.problem.now);
+
+    var loop = q("#loop");
+    setSectionHead(loop, t.journey);
+    qa("#loop .journey-step").forEach(function (el, i) {
+      if (!t.journey.steps[i]) return;
+      setText("h3", t.journey.steps[i][0], el);
+      setHTML("p", t.journey.steps[i][1], el);
+    });
+
+    var how = q("#how");
+    setSectionHead(how, t.how);
+    qa("#how .ledger-row").forEach(function (row, i) {
+      if (!t.how.rows[i]) return;
+      setText("h3", t.how.rows[i][0], row);
+      setText("p", t.how.rows[i][1], row);
+    });
+
+    var styles = q("#styles");
+    setSectionHead(styles, t.styles);
+    setSimpleCards("#styles .card", t.styles.cards);
+    setText("#styles .ba-note", t.styles.note);
+
+    var ba = q("#before-after");
+    setSectionHead(ba, t.beforeAfter);
+    setAttr("#ba", "aria-label", t.beforeAfter.aria);
+    setText("#ba .lbl.b", t.beforeAfter.labels[0]);
+    setText("#ba .lbl.a", t.beforeAfter.labels[1]);
+    setText("#before-after .ba-note", t.beforeAfter.note);
+
+    var story = q("#story");
+    setSectionHead(story, t.story);
+    setAttr("#story video", "aria-label", t.story.videoLabel);
+    setText("#story .media-note", t.story.note);
+
+    var patients = q("#patients");
+    setSectionHead(patients, t.patients);
+    setMarkedList("#patients .audience-copy li", t.patients.ticks);
+    setText("#patients .cta-row .btn", t.patients.cta);
+    setAttr("#patients img", "alt", t.patients.imageAlt);
+    setText("#patients .audience-card h3", t.patients.cardTitle);
+    setMarkedList("#patients .audience-card li", t.patients.cardTicks);
+
+    var clinics = q("#clinics");
+    setSectionHead(clinics, t.clinics);
+    setMarkedList("#clinics .audience-copy li", t.clinics.ticks);
+    setText("#clinics .cta-row .btn", t.clinics.cta);
+    setText("#clinics .audience-card h3", t.clinics.cardTitle);
+    setMarkedList("#clinics .audience-card li", t.clinics.cardTicks);
+
+    var trust = q("#trust");
+    setSectionHead(trust, t.trust);
+    qa("#trust .trust-item").forEach(function (item, i) {
+      if (!t.trust.items[i]) return;
+      setText("h3", t.trust.items[i][0], item);
+      setText("p", t.trust.items[i][1], item);
+    });
+
+    setSectionHead(q("#access"), t.access);
+
+    var faq = q("#faq");
+    setSectionHead(faq, t.faq);
+    qa("#faq details").forEach(function (item, i) {
+      if (!t.faq.items[i]) return;
+      setText("summary", t.faq.items[i][0], item);
+      setText("p", t.faq.items[i][1], item);
+    });
+
+    var finalSection = q("#early-access");
+    setSectionHead(finalSection, t.final);
+    setText("#early-access > .wrap > .trust-line", t.final.note);
+
+    setText("#form-user h3", t.forms.userTitle);
+    setText("#form-user .fh", t.forms.userHelp);
+    setText('label[for="u-name"]', t.forms.labels[0]);
+    setText('label[for="u-contact"]', t.forms.labels[1]);
+    setText('label[for="u-city"]', t.forms.labels[2]);
+    setText("#form-user .field:nth-of-type(4) > label", t.forms.labels[3]);
+    setText('label[for="u-comment"]', t.forms.labels[4]);
+    qa("#form-user .radio-row label").forEach(function (label, i) { setLabel(label, t.forms.radios[i]); });
+    setHTML("#form-user .consent span", t.forms.consent);
+    setText("#form-user button", t.forms.userButton);
+
+    setText("#form-clinic h3", t.forms.clinicTitle);
+    setText("#form-clinic .fh", t.forms.clinicHelp);
+    ["c-name","c-city","c-person","c-phone","c-email","c-flow","c-interest","c-msg"].forEach(function (id, i) {
+      setText('label[for="' + id + '"]', t.forms.clinicLabels[i]);
+    });
+    q("#c-person").placeholder = t.forms.clinicPlaceholders[0];
+    q("#c-flow").placeholder = t.forms.clinicPlaceholders[1];
+    qa("#c-interest option").forEach(function (opt, i) { if (t.forms.options[i]) opt.textContent = t.forms.options[i]; });
+    setHTML("#form-clinic .consent span", t.forms.consent);
+    setText("#form-clinic button", t.forms.clinicButton);
+
+    setHTML("footer .disc", t.footer.html);
+    setHTML("footer.site p", t.footer.status);
+
+    try {
+      localStorage.setItem("zubilook_lang", currentLang);
+      var url = new URL(window.location.href);
+      url.searchParams.set("lang", currentLang);
+      window.history.replaceState({}, "", url);
+    } catch (err) {}
+  }
+  function initialLanguage() {
+    try {
+      var urlLang = new URL(window.location.href).searchParams.get("lang");
+      if (COPY[urlLang]) return urlLang;
+      var saved = localStorage.getItem("zubilook_lang");
+      if (COPY[saved]) return saved;
+      var browser = (navigator.language || "").toLowerCase();
+      if (browser.indexOf("uz") === 0) return "uz";
+      if (browser.indexOf("en") === 0) return "en";
+    } catch (err) {}
+    return "ru";
+  }
+  qa("[data-lang]").forEach(function (btn) {
+    btn.addEventListener("click", function () { applyLanguage(btn.dataset.lang); });
+  });
+  applyLanguage(initialLanguage());
+
+  // ---------- video: respectful autoplay + graceful fallback ----------
+  (function () {
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelectorAll('video[data-autoplay]').forEach(function (v) {
+      // If the media host is unreachable (e.g. strict-CSP preview), hide the
+      // hero media layer so the dark background remains; the demo player
+      // keeps its frame with a note.
+      v.addEventListener('error', hide, true);
+      var src = v.querySelector('source');
+      if (src) src.addEventListener('error', hide, true);
+      function hide() {
+        var wrap = v.closest('.hero-media');
+        if (wrap) wrap.style.display = 'none';
+      }
+      if (!reduced) {
+        var p = v.play();
+        if (p && p.catch) p.catch(function () { /* autoplay blocked — poster stays */ });
+      }
+    });
+  })();
+
+  // ---------- mobile nav ----------
+  (function () {
+    var b = document.getElementById('burger'), m = document.getElementById('mnav');
+    b.addEventListener('click', function () {
+      var open = m.classList.toggle('open');
+      b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    m.addEventListener('click', function (e) {
+      if (e.target.tagName === 'A') { m.classList.remove('open'); b.setAttribute('aria-expanded', 'false'); }
+    });
+  })();
+
+  // ---------- before/after demo ----------
+  (function () {
+    var frame = document.getElementById('ba');
+    if (!frame) return;
+    var dragging = false;
+    function setX(clientX) {
+      var r = frame.getBoundingClientRect();
+      var pct = Math.min(96, Math.max(4, ((clientX - r.left) / r.width) * 100));
+      frame.style.setProperty('--x', pct + '%');
+    }
+    frame.addEventListener('pointerdown', function (e) { dragging = true; frame.setPointerCapture(e.pointerId); setX(e.clientX); });
+    frame.addEventListener('pointermove', function (e) { if (dragging) setX(e.clientX); });
+    frame.addEventListener('pointerup', function () { dragging = false; });
+    frame.addEventListener('pointercancel', function () { dragging = false; });
+  })();
+
+  // ---------- scroll reveal ----------
+  (function () {
+    var els = document.querySelectorAll('.reveal');
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.1 });
+    els.forEach(function (el) { io.observe(el); });
+  })();
+
+  // ---------- forms ----------
+  (function () {
+    function fields(form) {
+      var d = {};
+      new FormData(form).forEach(function (v, k) { d[k] = String(v).trim(); });
+      return d;
+    }
+    function msg(form, text, ok) {
+      var el = form.querySelector('.form-msg');
+      el.textContent = text;
+      el.className = 'form-msg ' + (ok ? 'ok' : 'err');
+    }
+    async function submitTo(table, payload) {
+      var resp = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(payload)
+      });
+      return resp;
+    }
+    function mailtoFallback(subject, data) {
+      var body = Object.keys(data).map(function (k) { return k + ': ' + data[k]; }).join('\n');
+      window.location.href = 'mailto:' + FALLBACK_EMAIL +
+        '?subject=' + encodeURIComponent(subject) +
+        '&body=' + encodeURIComponent(body);
+    }
+
+    var fu = document.getElementById('form-user');
+    fu.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (!fu.reportValidity()) return;
+      var d = fields(fu);
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        try {
+          var r = await submitTo('waitlist', {
+            name: d.name || null,
+            contact: d.contact,
+            city: d.city || null,
+            interest: d.interest || 'app',
+            comment: d.comment || null,
+            locale: currentLang,
+            consent_given: d.consent === 'on',
+            consent_version: CONSENT_VERSION,
+            source: 'hero'
+          });
+          if (r.ok) { msg(fu, copy().messages.userOk, true); fu.reset(); return; }
+          if (r.status === 409) { msg(fu, copy().messages.duplicate, true); return; }
+          msg(fu, copy().messages.fail + FALLBACK_EMAIL, false);
+        } catch (err) {
+          msg(fu, copy().messages.offline, false);
+          mailtoFallback(copy().messages.subjectUser, d);
+        }
+      } else {
+        msg(fu, copy().messages.opening, true);
+        mailtoFallback(copy().messages.subjectUser, d);
+      }
+    });
+
+    var fc = document.getElementById('form-clinic');
+    fc.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (!fc.reportValidity()) return;
+      var d = fields(fc);
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        try {
+          var r = await submitTo('clinic_applications', {
+            clinic_name: d.clinic_name, city: d.city || null, phone: d.phone,
+            contact_person: d.contact_person || null,
+            email: d.email || null,
+            monthly_flow: d.flow || null,
+            interest: d.interest || 'pilot',
+            message: d.message || null,
+            locale: currentLang,
+            consent_given: d.consent === 'on',
+            consent_version: CONSENT_VERSION,
+            source: 'hero'
+          });
+          if (r.ok) { msg(fc, copy().messages.clinicOk, true); fc.reset(); return; }
+          msg(fc, copy().messages.clinicFail + FALLBACK_EMAIL, false);
+        } catch (err) {
+          msg(fc, copy().messages.offline, false);
+          mailtoFallback(copy().messages.subjectClinic, d);
+        }
+      } else {
+        msg(fc, copy().messages.opening, true);
+        mailtoFallback(copy().messages.subjectClinic, d);
+      }
+    });
+  })();
+
+  // ---------- PWA service worker ----------
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {});
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">ZubiLook maskable icon</title>
+  <desc id="desc">A safe-area ZubiLook monogram for install surfaces.</desc>
+  <rect width="512" height="512" fill="#0A0A0B"/>
+  <path d="M165 164h181l-4 36-116 112h112l-5 36H154l4-35 116-113H160l5-36Z" fill="#F6DFA8"/>
+  <circle cx="348" cy="335" r="15" fill="#BFD7FF"/>
+</svg>
